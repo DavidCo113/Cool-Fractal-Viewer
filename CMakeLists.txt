@@ -5,52 +5,13 @@ option(USE_LONGDOUBLE "Use long doubles for keeping track of zoom" ON)
 
 configure_file(config.h.in config.h)
 
-#set(CMAKE_MODULE_PATH "/usr/x86_64-w64-mingw32/lib;/usr/x86_64-w64-mingw32;/usr/x86_64-w64-mingw32/bin;/usr/x86_64-w64-mingw32/include")
-#set(FIND_SDL2_PATHS "/usr/x86_64-w64-mingw32/bin")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -static-libgcc -static-libstdc++")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 message("Using flags \"${CMAKE_CXX_FLAGS}\"")
-
-#set(CMAKE_EXE_LINKER_FLAGS "-static")
-
-#add_compile_options("-static")
-#link_libraries("-static")
-
-#add_library(myLib SHARED mandelbrot.cpp)
-#set(CMAKE_EXE_LINKER_FLAGS " -static")
-#target_link_libraries(myLib -static-libgcc -static-libstdc++)
-
-#add_library(gcc SHARED fractal.cpp)
-#set(CMAKE_EXE_LINKER_FLAGS " -static")
-#target_link_libraries(gcc -static-libgcc -static-libstdc++)
-#target_link_options(gcc static-libgcc static-libstdc++)
-#target_link_libraries(gcc fractal)
-
-#Target OS
-#set(CMAKE_SYSTEM_NAME Windows)
-#set(CMAKE_SYSTEM_PROCESSOR AMD64)
-#set(prefix "/usr/x86_64-w64-mingw32")
-#set(exec_prefix "${prefix}")
-
-#set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32 /usr/x86_64-w64-mingw32/lib /usr/x86_64-w64-mingw32/bin /usr/x86_64-w64-mingw32/include /usr/i686-w64-mingw32)
-
-#Compilers
-#set(CMAKE_C_COMPILER "/usr/bin/86_64-w64-mingw32-gcc")
-#set(CMAKE_CXX_COMPILER "/usr/bin/x86_64-w64-mingw32-g++")
-
-#set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-#set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-#set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-#set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-
-# search headers and libraries in the target environment
-#set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-#set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -90,22 +51,13 @@ install(FILES "${PROJECT_BINARY_DIR}/icon.bmp" DESTINATION share)
 
 target_include_directories(fractal PUBLIC "${PROJECT_BINARY_DIR}")
 
-#find_package(PkgConfig REQUIRED)
-#pkg_search_module(SDL2 REQUIRED sdl2)
-#include_directories(${SDL2_INCLUDE_DIRS})
-#target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
-
 find_package(SDL2 REQUIRED)
 
 include_directories(${SDL2_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} "${SDL2_LIBRARIES}")
-#include_directories("/usr/x86_64-w64-mingw32/bin")
-#target_link_libraries(${PROJECT_NAME} "/usr/x86_64-w64-mingw32/lib/libSDL2main.a;/usr/x86_64-w64-mingw32/bin/SDL2.dll")
-
-#message("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa   ${SDL2_LIBRARIES}")
 
 include(InstallRequiredSystemLibraries)
-#set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")
 set(CPACK_PACKAGE_VERSION_MAJOR "${fractal_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${fractal_VERSION_MINOR}")
 set(CPACK_SOURCE_GENERATOR "TGZ")

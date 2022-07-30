@@ -16,7 +16,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
+#include "build/config.h"
 #include "sierpinski.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_thread.h>
@@ -41,7 +41,7 @@ bool multisample = false;
 int r = 2;
 int g = 4;
 int b = 8;
-unsigned int threads = 16;
+unsigned int threads = std::thread::hardware_concurrency();
 bool automatic_iters = true;
 #ifdef USE_LONGDOUBLE
 long double zoom = default_zoom;
@@ -150,7 +150,7 @@ double in_mand_set_norm(std::complex<long double> c) {
 }
 
 int auto_iters() {
-  double f = sqrt(0.001 + 2 * std::min(abs((-aspect_zoom.real() + x_pos) -
+  long double f = sqrt(0.001 + 2 * std::min(abs((-aspect_zoom.real() + x_pos) -
                                            (aspect_zoom.real() + x_pos)),
                                        abs((-aspect_zoom.imag() + y_pos) -
                                            (aspect_zoom.imag() + y_pos))));
@@ -159,7 +159,7 @@ int auto_iters() {
   return 0;
 }
 
-int auto_iters2(SDL_Window *window) {
+int auto_iters2(SDL_Window *window) { // WIP
   int win_w, win_h;
   SDL_GetWindowSize(window, &win_w, &win_h);
 
@@ -290,7 +290,8 @@ int screenshot(SDL_Renderer *renderer, SDL_Window *window) {
   return 0;
 }
 
-int render_escape_time_boundary(SDL_Renderer *renderer, SDL_Window *window) {
+int render_escape_time_boundary(SDL_Renderer *renderer,
+                                SDL_Window *window) { // WIP
   //   iterations = sqrt(2 * 1/std::min(aspect_zoom.real(),
   //   aspect_zoom.imag()));
 
@@ -553,8 +554,6 @@ std::vector<double> render_normalized(unsigned int starty, unsigned int endy,
 int render(SDL_Renderer *renderer, SDL_Window *window) {
   // if current fractal uses escape time, render it.
   if (find(et_sets.begin(), et_sets.end(), set) != et_sets.end()) {
-    //     SDL_Thread *thread = SDL_CreateThread(render_escape_time, "Test",
-    //     renderer, window);
     int win_w, win_h;
     SDL_GetWindowSize(window, &win_w, &win_h);
 
@@ -576,7 +575,7 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       y_pos = 0;
       zoom = 2;
       SDL_Log("Illegal position detected; resetting it");
-    } else if (iterations == 0) {
+    } else if (iterations == 0 and !automatic_iters) {
       iterations = 1;
       SDL_Log("0 iterations detected; resetting it");
     } else if (zoom == 0) {
@@ -680,7 +679,7 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
               }
             } else {
               std::vector<unsigned int> rgb =
-                  hue_to_rgb((iters / iterations) * 360);
+                  hue_to_rgb(std::fmod(iters, 360));
               SDL_SetRenderDrawColor(renderer, rgb[2], rgb[1], rgb[0], 255);
               SDL_RenderDrawPoint(renderer, x, y);
               switch (ie) {
@@ -730,13 +729,15 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
   return 0;
 }
 
-// microsoft windows dark magic that should not be questioned
 #ifdef __cplusplus
 extern "C"
 #endif
     int
     main(int argc, char *argv[]) {
   bool quit = false;
+  if (threads == 0) {
+    threads = 1;
+  }
   SDL_Event event;
 
   SDL_Init(SDL_INIT_VIDEO);
@@ -763,6 +764,8 @@ extern "C"
   } else {
     SDL_Log("Using other precision");
   }
+
+  SDL_Log(str_to_char("Using " + std::to_string(threads) + " threads"));
 
   if (argc >= 4) {
     x_pos = strtod(argv[1], nullptr);
