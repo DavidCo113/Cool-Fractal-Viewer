@@ -31,10 +31,17 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
 
         foreach(file IN LISTS file_list)
             message(STATUS ${file})
-            add_custom_command(
-                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${file}"
-                COMMAND ${CMAKE_COMMAND} -E copy "/usr/${TOOLCHAIN_PREFIX}/bin/${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
-            )
+            if (EXISTS "/usr/${TOOLCHAIN_PREFIX}/bin/${file}")
+                add_custom_command(
+                    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+                    COMMAND ${CMAKE_COMMAND} -E copy "/usr/${TOOLCHAIN_PREFIX}/bin/${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+                )
+            elseif (EXISTS "/usr/${TOOLCHAIN_PREFIX}/lib/${file}")
+                add_custom_command(
+                    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+                    COMMAND ${CMAKE_COMMAND} -E copy "/usr/${TOOLCHAIN_PREFIX}/lib/${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+                )
+            endif()
         endforeach()
     endif()
     add_custom_target(libs ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/libwinpthread-1.dll;${CMAKE_CURRENT_BINARY_DIR}/SDL2.dll")
