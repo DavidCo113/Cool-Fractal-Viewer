@@ -27,14 +27,13 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     if (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
-        set(file_list "/usr/${TOOLCHAIN_PREFIX}/bin/libwinpthread-1.dll;/usr/${TOOLCHAIN_PREFIX}/bin/SDL2.dll")
+        set(file_list "libwinpthread-1.dll;SDL2.dll")
 
         foreach(file IN LISTS file_list)
             message(STATUS ${file})
-            cmake_path(GET file FILENAME filename)
             add_custom_command(
-                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${filename}"
-                COMMAND ${CMAKE_COMMAND} -E copy "${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+                COMMAND ${CMAKE_COMMAND} -E copy "/usr/${TOOLCHAIN_PREFIX}/bin/${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
             )
         endforeach()
     endif()
