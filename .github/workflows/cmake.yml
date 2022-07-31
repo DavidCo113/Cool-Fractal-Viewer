@@ -52,7 +52,11 @@ jobs:
     - name: Install SDL2 and Mingw-w64
       run: |
         sudo apt-get update -y -qq
-        sudo apt-get install libsdl2-dev mingw-w64
+        sudo apt-get install mingw-w64
+        export version=2.0.22
+        wget -r https://www.libsdl.org/release/$file -O SDL2-devel-${version}-mingw.tar.gz
+        tar -xf SDL2-devel-${version}-mingw.tar.gz
+        sudo mv SDL2-${version}/x86_64-w64-mingw32 /usr
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
