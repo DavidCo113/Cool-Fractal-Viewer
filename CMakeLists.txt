@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 project(fractal VERSION 1.0)
 
 option(USE_LONGDOUBLE "Use long doubles for keeping track of zoom" ON)
@@ -27,13 +27,14 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     if (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
-        set(file_list "libwinpthread-1.dll;SDL2.dll")
+        set(file_list "/usr/${TOOLCHAIN_PREFIX}/bin/libwinpthread-1.dll;${CMAKE_CURRENT_SOURCE_DIR}/SDL2.dll")
 
         foreach(file IN LISTS file_list)
             message(STATUS ${file})
+            cmake_path(GET file FILENAME filename)
             add_custom_command(
-                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${file}"
-                COMMAND ${CMAKE_COMMAND} -E copy "/usr/${TOOLCHAIN_PREFIX}/bin/${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${filename}"
+                COMMAND ${CMAKE_COMMAND} -E copy "${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
             )
         endforeach()
     endif()
@@ -53,8 +54,9 @@ target_include_directories(fractal PUBLIC "${PROJECT_BINARY_DIR}")
 
 find_package(SDL2 REQUIRED)
 
-include_directories(${SDL2_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} "${SDL2_LIBRARIES}")
+#include_directories(${SDL2_INCLUDE_DIRS})
+message("THE SDL2 LIBS ARE: ${SDL2_LIBRARIES}")
+target_link_libraries(${PROJECT_NAME} "-L${CMAKE_CURRENT_SOURCE_DIR} -lmingw32 -lSDL2main -lSDL2 -mwindows")
 
 include(InstallRequiredSystemLibraries)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")

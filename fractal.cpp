@@ -757,6 +757,8 @@ extern "C"
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
   SDL_SetRenderDrawBlendMode(renderer, blend);
 
+  SDL_Log("Cool Fractal Viewer Copyright (C) 2022 David Cole\n  This program is free software: you\n  can redistribute it and/or modify\n  it under the terms of the GNU General Public License as published by\n  the Free Software Foundation, either version 3 of the License, or\n  (at your option) any later version.\n\n  You should have received a copy of the GNU General Public License\n  along with this program.  If not, see <https://www.gnu.org/licenses/>.");
+
   if (typeid(zoom) == typeid(long double)) {
     SDL_Log("Using long precision");
   } else if (typeid(zoom) == typeid(double)) {
