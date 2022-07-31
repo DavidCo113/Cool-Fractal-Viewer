@@ -54,7 +54,7 @@ jobs:
         sudo apt-get update -y -qq
         sudo apt-get install mingw-w64
         export version=2.0.22
-        wget -r https://www.libsdl.org/release/SDL2-${version}/x86_64-w64-mingw32 -O SDL2-devel-${version}-mingw.tar.gz
+        wget -r https://www.libsdl.org/release/SDL2-devel-${version}-mingw.tar.gz -O SDL2-devel-${version}-mingw.tar.gz
         tar -xf SDL2-devel-${version}-mingw.tar.gz
         sudo mv SDL2-${version}/x86_64-w64-mingw32 /usr
 
