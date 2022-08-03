@@ -21,10 +21,10 @@ if (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
     set(file_list "icon.bmp;LICENSE.md;README.md")
     
     foreach(file IN LISTS file_list)
-        message(STATUS icon.bmp)
+        message(STATUS ${file})
         add_custom_command(
-            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp"
-            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/icon.bmp" "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp"
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${file}"
+            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${file}" "${CMAKE_CURRENT_BINARY_DIR}/${file}"
         )
     endforeach()
 endif()
