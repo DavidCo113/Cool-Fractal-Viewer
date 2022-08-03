@@ -18,11 +18,15 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
-    message(STATUS icon.bmp)
-    add_custom_command(
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/icon.bmp" "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp"
-    )
+    set(file_list "icon.bmp;LICENSE.md;README.md")
+    
+    foreach(file IN LISTS file_list)
+        message(STATUS icon.bmp)
+        add_custom_command(
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp"
+            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/icon.bmp" "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp"
+        )
+    endforeach()
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
@@ -50,6 +54,8 @@ endif()
 
 add_custom_target(distclean COMMAND make clean COMMAND ${CMAKE_COMMAND} -E rm -r *.cmake CMakeCache.txt config.h Makefile CMakeFiles _CPack_Packages fractal-*.*-* install_manifest.txt)
 add_custom_target(icon ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp")
+add_custom_target(icon ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/README.md")
+add_custom_target(icon ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/LICENSE.md")
 
 add_executable(fractal fractal.cpp)
 
