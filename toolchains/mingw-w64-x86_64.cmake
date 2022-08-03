@@ -11,13 +11,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
 set(TOOLCHAIN_PREFIX x86_64-w64-mingw32)
 
 # cross compilers to use for C, C++ and Fortran
-if (EXISTS ${TOOLCHAIN_PREFIX}-gcc-posix)
+
+find_program(POSIX-GCC "${TOOLCHAIN_PREFIX}-gcc-posix" /usr/bin)
+find_program(POSIX-G++ "${TOOLCHAIN_PREFIX}-g++-posix" /usr/bin)
+
+if (NOT POSIX-GCC STREQUAL POSIX-GCC-NOTFOUND)
     set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc-posix)
 else()
     set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
 endif()
 
-if (EXISTS ${TOOLCHAIN_PREFIX}-g++-posix)
+if (NOT POSIX-G++ STREQUAL POSIX-G++-NOTFOUND)
     set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++-posix)
 else()
     set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
