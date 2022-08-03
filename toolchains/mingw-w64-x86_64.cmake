@@ -12,9 +12,9 @@ set(TOOLCHAIN_PREFIX x86_64-w64-mingw32)
 
 # cross compilers to use for C, C++ and Fortran
 if (EXISTS ${TOOLCHAIN_PREFIX}-gcc-posix)
-    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-gcc-posix)
+    set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc-posix)
 else()
-    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
+    set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
 endif()
 
 if (EXISTS ${TOOLCHAIN_PREFIX}-g++-posix)
