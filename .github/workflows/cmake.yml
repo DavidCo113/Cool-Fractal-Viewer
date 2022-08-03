@@ -56,6 +56,9 @@ jobs:
         export version=2.0.22
         ls /usr/x86_64-w64-mingw32/bin/
         wget --no-verbose https://www.libsdl.org/release/SDL2-devel-${version}-mingw.tar.gz -O SDL2-devel-${version}-mingw.tar.gz
+        echo "----- Thing Below -----"
+        ls /usr/lib/gcc/x86_64-w64-mingw32
+        echo "----- Thing Above -----"
         tar -xf SDL2-devel-${version}-mingw.tar.gz
         sudo rsync -a SDL2-${version}/x86_64-w64-mingw32 /usr
 
