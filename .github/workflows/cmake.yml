@@ -40,6 +40,8 @@ jobs:
         path: |
           ${{github.workspace}}/build/fractal
           ${{github.workspace}}/build/icon.bmp
+          ${{github.workspace}}/build/LICENSE.md
+          ${{github.workspace}}/build/README.md
 
   build-windows:
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
