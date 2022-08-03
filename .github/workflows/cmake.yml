@@ -58,8 +58,7 @@ jobs:
         export version=2.0.22
         wget --no-verbose https://www.libsdl.org/release/SDL2-devel-${version}-mingw.tar.gz -O SDL2-devel-${version}-mingw.tar.gz
         tar -xf SDL2-devel-${version}-mingw.tar.gz
-        mkdir -p {{github.workspace}}/build
-        cp SDL2-${version}/README-SDL.txt ${{github.workspace}}/build
+        cp SDL2-${version}/README-SDL.txt ${{github.workspace}}
         sudo rsync -a SDL2-${version}/x86_64-w64-mingw32 /usr
 
     - name: Configure CMake
@@ -82,4 +81,4 @@ jobs:
           ${{github.workspace}}/build/SDL2.dll
           ${{github.workspace}}/build/LICENSE.md
           ${{github.workspace}}/build/README.md
-          ${{github.workspace}}/build/README-SDL.txt
+          ${{github.workspace}}/README-SDL.txt
