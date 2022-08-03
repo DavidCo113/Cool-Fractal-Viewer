@@ -58,6 +58,8 @@ jobs:
         export version=2.0.22
         wget --no-verbose https://www.libsdl.org/release/SDL2-devel-${version}-mingw.tar.gz -O SDL2-devel-${version}-mingw.tar.gz
         tar -xf SDL2-devel-${version}-mingw.tar.gz
+        mkdir {{github.workspace}}/build
+        cp SDL2-${version}/README-SDL.txt ${{github.workspace}}/build/README-SDL.txt
         sudo rsync -a SDL2-${version}/x86_64-w64-mingw32 /usr
 
     - name: Configure CMake
@@ -67,9 +69,7 @@ jobs:
 
     - name: Build
       # Build your program with the given configuration
-      run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-        cp SDL2-${version}/README-SDL.txt ${{github.workspace}}/build/README-SDL.txt
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
