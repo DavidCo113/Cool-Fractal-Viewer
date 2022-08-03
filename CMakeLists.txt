@@ -27,6 +27,8 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     if (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
+        message("link_Executable: ${LINK_EXECUTABLE}")
+        
         set(file_list "libwinpthread-1.dll;SDL2.dll")
 
         foreach(file IN LISTS file_list)
