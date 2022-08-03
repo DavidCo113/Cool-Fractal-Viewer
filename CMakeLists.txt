@@ -53,9 +53,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
 endif()
 
 add_custom_target(distclean COMMAND make clean COMMAND ${CMAKE_COMMAND} -E rm -r *.cmake CMakeCache.txt config.h Makefile CMakeFiles _CPack_Packages fractal-*.*-* install_manifest.txt)
-add_custom_target(icon ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp")
-add_custom_target(icon ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/README.md")
-add_custom_target(icon ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/LICENSE.md")
+add_custom_target(depends ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp;${CMAKE_CURRENT_BINARY_DIR}/README.md;${CMAKE_CURRENT_BINARY_DIR}/LICENSE.md")
 
 add_executable(fractal fractal.cpp)
 
