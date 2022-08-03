@@ -295,9 +295,9 @@ int render_escape_time_boundary(SDL_Renderer *renderer,
   //   iterations = sqrt(2 * 1/std::min(aspect_zoom.real(),
   //   aspect_zoom.imag()));
 
-  int xc = fpclassify(x_pos);
-  int yc = fpclassify(y_pos);
-  int zoomc = fpclassify(zoom);
+  int xc = std::fpclassify(x_pos);
+  int yc = std::fpclassify(y_pos);
+  int zoomc = std::fpclassify(zoom);
   if (xc == FP_NAN || xc == FP_INFINITE || yc == FP_NAN || yc == FP_INFINITE ||
       zoomc == FP_NAN || zoomc == FP_INFINITE) {
     x_pos = 0;
@@ -393,9 +393,9 @@ int render_escape_time_i(SDL_Renderer *renderer, SDL_Window *window) {
   //   iterations = sqrt(2 * 1/std::min(aspect_zoom.real(),
   //   aspect_zoom.imag()));
 
-  int xc = fpclassify(x_pos);
-  int yc = fpclassify(y_pos);
-  int zoomc = fpclassify(zoom);
+  int xc = std::fpclassify(x_pos);
+  int yc = std::fpclassify(y_pos);
+  int zoomc = std::fpclassify(zoom);
   if (xc == FP_NAN || xc == FP_INFINITE || yc == FP_NAN || yc == FP_INFINITE ||
       zoomc == FP_NAN || zoomc == FP_INFINITE) {
     x_pos = 0;
@@ -566,9 +566,9 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
 
     int chunksize = win_h / threads;
 
-    int xc = fpclassify(x_pos);
-    int yc = fpclassify(y_pos);
-    int zoomc = fpclassify(zoom);
+    int xc = std::fpclassify(x_pos);
+    int yc = std::fpclassify(y_pos);
+    int zoomc = std::fpclassify(zoom);
     if (xc == FP_NAN || xc == FP_INFINITE || yc == FP_NAN ||
         yc == FP_INFINITE || zoomc == FP_NAN || zoomc == FP_INFINITE) {
       x_pos = 0;
