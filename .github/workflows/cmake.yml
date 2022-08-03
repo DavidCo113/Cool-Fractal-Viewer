@@ -59,7 +59,7 @@ jobs:
         wget --no-verbose https://www.libsdl.org/release/SDL2-devel-${version}-mingw.tar.gz -O SDL2-devel-${version}-mingw.tar.gz
         tar -xf SDL2-devel-${version}-mingw.tar.gz
         mkdir -p {{github.workspace}}/build
-        cp SDL2-${version}/README-SDL.txt ${{github.workspace}}/build/README-SDL.txt
+        cp SDL2-${version}/README-SDL.txt ${{github.workspace}}/build
         sudo rsync -a SDL2-${version}/x86_64-w64-mingw32 /usr
 
     - name: Configure CMake
