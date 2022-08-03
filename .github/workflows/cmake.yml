@@ -56,9 +56,9 @@ jobs:
         sudo apt-get update -y -qq
         sudo apt-get install mingw-w64
         export version=2.0.22
-        ls /usr/x86_64-w64-mingw32/bin/
         wget --no-verbose https://www.libsdl.org/release/SDL2-devel-${version}-mingw.tar.gz -O SDL2-devel-${version}-mingw.tar.gz
         tar -xf SDL2-devel-${version}-mingw.tar.gz
+        cp SDL2-${version}/README-SDL.txt ${{github.workspace}}/build/README-SDL.txt
         sudo rsync -a SDL2-${version}/x86_64-w64-mingw32 /usr
 
     - name: Configure CMake
@@ -81,3 +81,4 @@ jobs:
           ${{github.workspace}}/build/SDL2.dll
           ${{github.workspace}}/build/LICENSE.md
           ${{github.workspace}}/build/README.md
+          ${{github.workspace}}/build/README-SDL.txt
