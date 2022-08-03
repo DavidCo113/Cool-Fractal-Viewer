@@ -77,3 +77,5 @@ jobs:
           ${{github.workspace}}/build/icon.bmp
           ${{github.workspace}}/build/libwinpthread-1.dll
           ${{github.workspace}}/build/SDL2.dll
+          ${{github.workspace}}/build/LICENSE.md
+          ${{github.workspace}}/build/README.md
