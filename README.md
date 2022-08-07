@@ -14,6 +14,8 @@ S and numpad enter | Save screenshot
 
 R and numpad 0 | Reset position
 
+C | Change colors
+
 F11 | Fullscreen
 
 Left-click | Center on mouse
