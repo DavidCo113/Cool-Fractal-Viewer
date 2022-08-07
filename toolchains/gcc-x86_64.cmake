@@ -2,7 +2,7 @@
 #
 # Typical usage:
 #    *) cd build
-#    *) cmake -DCMAKE_TOOLCHAIN_FILE=~/mingw-w64-x86_64.cmake ..
+#    *) cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/gcc-x86_64.cmake ..
 
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR AMD64)

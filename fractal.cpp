@@ -30,6 +30,8 @@
 #include <typeinfo>
 #include <vector>
 std::string set = "mandelbrot";
+unsigned int color = 2; // make color an int because i don't wanna come up with names for the colorschemes
+unsigned int total_colors = 3; // how many colorschemes have actually been programmed in
 std::vector<std::string> et_sets = {"mandelbrot", "tricorn",
                                     "burning_ship"}; // escape-time sets
 unsigned long int iterations = 1024;
@@ -213,7 +215,7 @@ int auto_iters2(SDL_Window *window) { // WIP
   return 0;
 }
 
-std::vector<unsigned int> hue_to_rgb(double h) {
+std::vector<unsigned int> hue_to_rgb(double h, double v) {
   unsigned int red, green, blue;
   if (h <= 60) {
     red = 255;
@@ -240,6 +242,11 @@ std::vector<unsigned int> hue_to_rgb(double h) {
     green = 0;
     blue = (60 - (h - 300)) * 4.25;
   }
+
+  red *= v;
+  green *= v;
+  blue *= v;
+
   return std::vector<unsigned int>{red, green, blue};
 }
 
@@ -521,7 +528,7 @@ int render_escape_time_i(SDL_Renderer *renderer, SDL_Window *window) {
   return 0;
 }
 
-std::vector<double> render_normalized(unsigned int starty, unsigned int endy,
+std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
                                       unsigned int ix, int win_w, int win_h,
                                       unsigned int iz) {
   std::vector<double> renderedvec;
@@ -630,12 +637,12 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
 
       // render on other threads
       for (unsigned int i = 0; i < threads - 1; i += 1) {
-        futures.push_back(std::async(render_normalized, chunksize * i,
+        futures.push_back(std::async(compute_normalized, chunksize * i,
                                      chunksize * (i + 1), ix, win_w, win_h, 4));
       }
 
       // do some rendering on the main thread
-      std::vector<double> lastrender = render_normalized(
+      std::vector<double> lastrender = compute_normalized(
           chunksize * (threads - 1), win_h, ix, win_w, win_h, 4);
 
       // wait for the threads
@@ -652,6 +659,7 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       unsigned int ticker = 0;
       unsigned int starty;
       unsigned int endy;
+      std::vector<unsigned int> rgb;
 
       for (unsigned int chunk = 0; chunk < threads; chunk += 1) {
         if (chunk < threads - 1) {
@@ -678,8 +686,21 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
                 break;
               }
             } else {
-              std::vector<unsigned int> rgb =
-                  hue_to_rgb(std::fmod(iters, 360));
+              switch (color) {
+                case 0:
+                  rgb = hue_to_rgb(std::fmod(iters, 360), 1);
+                  break;
+                case 1:
+                  rgb = hue_to_rgb(iters / iterations * 360, 1);
+                  break;
+                case 2:
+                  rgb = hue_to_rgb(iters / iterations * 360, 10 * iters / iterations);
+                  break;
+                case 3:
+                  unsigned int grayscale = (iters / iterations) * 255;
+                  rgb = std::vector<unsigned int>{grayscale, grayscale, grayscale};
+                  break;
+              }
               SDL_SetRenderDrawColor(renderer, rgb[2], rgb[1], rgb[0], 255);
               SDL_RenderDrawPoint(renderer, x, y);
               switch (ie) {
@@ -948,6 +969,13 @@ extern "C"
         if (automatic_iters) {
           render(renderer, window);
         }
+        break;
+      case SDLK_c:
+        color += 1;
+        if (color > total_colors) {
+          color = 0;
+        }
+        render(renderer, window);
         break;
       }
       break;

@@ -1,9 +1,9 @@
 # Sample toolchain file for building for Windows from an Ubuntu Linux system.
 #
 # Typical usage:
-#    *) install cross compiler: `sudo apt-get install mingw-w64`
+#    *) install cross compiler: `sudo apt-get install mingw-w64` for debian-based or `sudo pacman -S mingw-w64` for arch-based
 #    *) cd build
-#    *) cmake -DCMAKE_TOOLCHAIN_FILE=~/mingw-w64-x86_64.cmake ..
+#    *) cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/mingw-w64-x86_64.cmake ..
 
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR AMD64)
