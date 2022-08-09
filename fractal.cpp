@@ -29,20 +29,24 @@
 #include <thread>
 #include <typeinfo>
 #include <vector>
-std::string set = "mandelbrot";
-unsigned int color = 2; // make color an int because i don't wanna come up with names for the colorschemes
-unsigned int total_colors = 3; // how many colorschemes have actually been programmed in
-std::vector<std::string> et_sets = {"mandelbrot", "tricorn",
-                                    "burning_ship"}; // escape-time sets
+unsigned int set = 0;
+unsigned int color = 2; // make color an int because i don't wanna come up with
+                        // names for the colorschemes and maybe it's better for performance idk
+const unsigned int total_colors =
+    3; // how many colorschemes have actually been programmed in
+const unsigned int sets = 2; // ignore sierpinski, it's annoying.
+const unsigned int et_sets = 2; // i'll let you guess
+const std::vector<std::string> set_names = {"mandelbrot", "tricorn",
+                                    "burning_ship", "sierpinski"};
+bool normalized = true;
 unsigned long int iterations = 1024;
-unsigned long int auto_iterations = 16384;
-long double d = 2;
-unsigned int radius = 4; // probably shouldn't change this
-int resolution = 500;
-bool multisample = false;
-int r = 2;
-int g = 4;
-int b = 8;
+// unsigned long int auto_iterations = 16384; // WIP
+long double d = 2; // WIP
+const unsigned int radius = 4; // probably shouldn't change this
+const bool multisample = false;
+const int r = 2;
+const int g = 4;
+const int b = 8;
 unsigned int threads = std::thread::hardware_concurrency();
 bool automatic_iters = true;
 #ifdef USE_LONGDOUBLE
@@ -53,10 +57,11 @@ double zoom = default_zoom;
 std::complex<long double> aspect_zoom(zoom, zoom);
 long double x_pos = 0;
 long double y_pos = 0;
-SDL_BlendMode blend = SDL_BLENDMODE_NONE;
+const SDL_BlendMode blend = SDL_BLENDMODE_NONE;
 SDL_Texture *rendered;
 bool d_is_int;
 std::complex<int> prevsize;
+const double log_2 = log(2);
 
 char *str_to_char(std::string str) {
   char *out = new char[str.size() + 1];
@@ -137,15 +142,49 @@ double in_mand_set_norm(std::complex<long double> c) {
   unsigned int i = iterations;
   while (i) {
     i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() +
-                        c.real(); // z = std::pow(z, d) + c;
+    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
     z.imag(2 * z.real() * z.imag() + c.imag());
     z.real(xtemp);
     double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
 
     if (modulus > radius) {
-      double mu = iterations - i - (log(log(modulus))) / log(2);
-      return mu;
+      return iterations - i - (log(log(modulus))) / log_2;
+    }
+  }
+  return 0;
+}
+
+double in_ship_set_norm(std::complex<long double> c) {
+  std::complex<long double> z(0, 0);
+  unsigned int i = iterations;
+  while (i) {
+    i--;
+    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
+
+    z.imag(abs(2 * z.real() * z.imag()) + c.imag());
+    z.real(xtemp);
+    double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
+
+    if (modulus > radius) {
+      return iterations - i - (log(log(modulus))) / log_2;
+    }
+  }
+  return 0;
+}
+
+double in_tric_set_norm(std::complex<long double> c) {
+  std::complex<long double> z(0, 0);
+  unsigned int i = iterations;
+  while (i) {
+    i--;
+    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
+
+    z.imag(-2 * z.real() * z.imag() + c.imag());
+    z.real(xtemp);
+    double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
+
+    if (modulus > radius) {
+      return iterations - i - (log(log(modulus))) / log_2;
     }
   }
   return 0;
@@ -153,9 +192,9 @@ double in_mand_set_norm(std::complex<long double> c) {
 
 int auto_iters() {
   long double f = sqrt(0.001 + 2 * std::min(abs((-aspect_zoom.real() + x_pos) -
-                                           (aspect_zoom.real() + x_pos)),
-                                       abs((-aspect_zoom.imag() + y_pos) -
-                                           (aspect_zoom.imag() + y_pos))));
+                                                (aspect_zoom.real() + x_pos)),
+                                            abs((-aspect_zoom.imag() + y_pos) -
+                                                (aspect_zoom.imag() + y_pos))));
 
   iterations = floor(223 / f);
   return 0;
@@ -216,6 +255,7 @@ int auto_iters2(SDL_Window *window) { // WIP
 }
 
 std::vector<unsigned int> hue_to_rgb(double h, double v) {
+  v = std::fmin(v, 1);
   unsigned int red, green, blue;
   if (h <= 60) {
     red = 255;
@@ -250,10 +290,10 @@ std::vector<unsigned int> hue_to_rgb(double h, double v) {
   return std::vector<unsigned int>{red, green, blue};
 }
 
-int in_ship_set(std::complex<double> c) {
+int in_ship_set(std::complex<long double> c) {
   std::complex<double> z(0, 0);
   for (unsigned int i = 0; i < iterations; i++) {
-    double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
+    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
     z.imag(abs(2 * z.real() * z.imag()) + c.imag());
     z.real(xtemp);
     if (std::norm(z) > 4) {
@@ -263,7 +303,7 @@ int in_ship_set(std::complex<double> c) {
   return 0;
 }
 
-int in_tric_set(std::complex<double> c) {
+int in_tric_set(std::complex<long double> c) {
   std::complex<double> z(0, 0);
   for (unsigned int i = 0; i < iterations; i++) {
     double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
@@ -281,7 +321,7 @@ int screenshot(SDL_Renderer *renderer, SDL_Window *window) {
   SDL_GetWindowSize(window, &win_w, &win_h);
 
   std::filesystem::create_directory("screenshots");
-  std::string filename = "screenshots/" + set + "_";
+  std::string filename = "screenshots/" + set_names[set] + "_";
 
   filename = filename + std::to_string(x_pos) + "," + std::to_string(y_pos) +
              "," + std::to_string(zoom) + "," + std::to_string(iterations) +
@@ -297,6 +337,7 @@ int screenshot(SDL_Renderer *renderer, SDL_Window *window) {
   return 0;
 }
 
+/*
 int render_escape_time_boundary(SDL_Renderer *renderer,
                                 SDL_Window *window) { // WIP
   //   iterations = sqrt(2 * 1/std::min(aspect_zoom.real(),
@@ -527,10 +568,45 @@ int render_escape_time_i(SDL_Renderer *renderer, SDL_Window *window) {
                                          std::to_string(diff.count()) + " s)"));
   return 0;
 }
+*/
+
+std::vector<double> compute_escape_time(unsigned int starty, unsigned int endy,
+                                       unsigned int ix, int win_w, int win_h,
+                                       unsigned int iz) {
+  std::vector<double> renderedvec;
+
+  unsigned int iters;
+
+  // start the main render loop
+  for (double x = ix; x < win_w; x += iz) {
+    for (double y = starty; y < endy; y += 1) {
+      iters = 0;
+      long double x_point = std::lerp(-aspect_zoom.real() + x_pos,
+                                      aspect_zoom.real() + x_pos, x / win_w);
+      long double y_point = std::lerp(-aspect_zoom.imag() + y_pos,
+                                      aspect_zoom.imag() + y_pos, y / win_h);
+      switch (set) {
+        case 0:
+          iters = in_mand_set2(std::complex<long double>(x_point, y_point));
+          break;
+        case 1:
+          iters = in_tric_set(std::complex<long double>(x_point, y_point));
+          break;
+        case 2:
+          iters = in_ship_set(std::complex<long double>(x_point, y_point));
+          break;
+      }
+
+      renderedvec.push_back(iters);
+    }
+  }
+
+  return renderedvec;
+}
 
 std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
-                                      unsigned int ix, int win_w, int win_h,
-                                      unsigned int iz) {
+                                       unsigned int ix, int win_w, int win_h,
+                                       unsigned int iz) {
   std::vector<double> renderedvec;
 
   double iters;
@@ -543,12 +619,16 @@ std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
                                       aspect_zoom.real() + x_pos, x / win_w);
       long double y_point = std::lerp(-aspect_zoom.imag() + y_pos,
                                       aspect_zoom.imag() + y_pos, y / win_h);
-      if (set == "mandelbrot") {
-        iters = in_mand_set_norm(std::complex<long double>(x_point, y_point));
-      } else if (set == "tricorn") {
-        iters = in_tric_set(std::complex<double>(x_point, y_point));
-      } else if (set == "burning_ship") {
-        iters = in_ship_set(std::complex<double>(x_point, y_point));
+      switch (set) {
+        case 0:
+          iters = in_mand_set_norm(std::complex<long double>(x_point, y_point));
+          break;
+        case 1:
+          iters = in_tric_set_norm(std::complex<long double>(x_point, y_point));
+          break;
+        case 2:
+          iters = in_ship_set_norm(std::complex<long double>(x_point, y_point));
+          break;
       }
 
       renderedvec.push_back(iters);
@@ -560,7 +640,7 @@ std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
 
 int render(SDL_Renderer *renderer, SDL_Window *window) {
   // if current fractal uses escape time, render it.
-  if (find(et_sets.begin(), et_sets.end(), set) != et_sets.end()) {
+  if (set <= et_sets) {
     int win_w, win_h;
     SDL_GetWindowSize(window, &win_w, &win_h);
 
@@ -637,13 +717,24 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
 
       // render on other threads
       for (unsigned int i = 0; i < threads - 1; i += 1) {
-        futures.push_back(std::async(compute_normalized, chunksize * i,
-                                     chunksize * (i + 1), ix, win_w, win_h, 4));
+        if (normalized) {
+          futures.push_back(std::async(compute_normalized, chunksize * i,
+                                      chunksize * (i + 1), ix, win_w, win_h, 4));
+        } else {
+          futures.push_back(std::async(compute_escape_time, chunksize * i,
+                                      chunksize * (i + 1), ix, win_w, win_h, 4));
+        }
       }
 
       // do some rendering on the main thread
-      std::vector<double> lastrender = compute_normalized(
-          chunksize * (threads - 1), win_h, ix, win_w, win_h, 4);
+      std::vector<double> lastrender;
+      if (normalized) {
+        lastrender = compute_normalized(
+            chunksize * (threads - 1), win_h, ix, win_w, win_h, 4);
+      } else {
+        lastrender = compute_escape_time(
+            chunksize * (threads - 1), win_h, ix, win_w, win_h, 4);
+      }
 
       // wait for the threads
       for (unsigned int i = 0; i < threads - 1; i += 1) {
@@ -687,19 +778,21 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
               }
             } else {
               switch (color) {
-                case 0:
-                  rgb = hue_to_rgb(std::fmod(iters, 360), 1);
-                  break;
-                case 1:
-                  rgb = hue_to_rgb(iters / iterations * 360, 1);
-                  break;
-                case 2:
-                  rgb = hue_to_rgb(iters / iterations * 360, 10 * iters / iterations);
-                  break;
-                case 3:
-                  unsigned int grayscale = (iters / iterations) * 255;
-                  rgb = std::vector<unsigned int>{grayscale, grayscale, grayscale};
-                  break;
+              case 0:
+                rgb = hue_to_rgb(std::fmod(iters, 360), 1);
+                break;
+              case 1:
+                rgb = hue_to_rgb(iters / iterations * 360, 1);
+                break;
+              case 2:
+                rgb = hue_to_rgb(iters / iterations * 360,
+                                 10 * iters / iterations);
+                break;
+              case 3:
+                unsigned int grayscale = (iters / iterations) * 255;
+                rgb =
+                    std::vector<unsigned int>{grayscale, grayscale, grayscale};
+                break;
               }
               SDL_SetRenderDrawColor(renderer, rgb[2], rgb[1], rgb[0], 255);
               SDL_RenderDrawPoint(renderer, x, y);
@@ -733,7 +826,7 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
                        str_to_char("Cool Fractal Viewer (" +
                                    std::to_string(diff.count()) + " s)"));
 
-  } else if (set == "sierpinski") {
+  } else if (set == 3) {
     SDL_SetWindowTitle(window, "Cool Fractal Viewer (Rendering)");
     std::chrono::steady_clock::time_point start =
         std::chrono::steady_clock::now();
@@ -778,7 +871,13 @@ extern "C"
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
   SDL_SetRenderDrawBlendMode(renderer, blend);
 
-  SDL_Log("Cool Fractal Viewer Copyright (C) 2022 David Cole\n  This program is free software: you\n  can redistribute it and/or modify\n  it under the terms of the GNU General Public License as published by\n  the Free Software Foundation, either version 3 of the License, or\n  (at your option) any later version.\n\n  You should have received a copy of the GNU General Public License\n  along with this program.  If not, see <https://www.gnu.org/licenses/>.");
+  SDL_Log(str_to_char("Cool Fractal Viewer v" + std::to_string(fractal_VERSION_MAJOR) + "." + std::to_string(fractal_VERSION_MINOR) + "\n  Copyright (C) 2022 David Cole\n  This program "
+          "is free software: you\n  can redistribute it and/or modify\n  it "
+          "under the terms of the GNU General Public License as published by\n "
+          " the Free Software Foundation, either version 3 of the License, "
+          "or\n  (at your option) any later version.\n\n  You should have "
+          "received a copy of the GNU General Public License\n  along with "
+          "this program.  If not, see <https://www.gnu.org/licenses/>.\n\n"));
 
   if (typeid(zoom) == typeid(long double)) {
     SDL_Log("Using long precision");
@@ -965,16 +1064,33 @@ extern "C"
         }
         break;
       case SDLK_BACKSLASH:
+      {
+        unsigned long int temp_iters = iterations;
         automatic_iters = !automatic_iters;
         if (automatic_iters) {
+          auto_iters();
+        }
+        if (iterations != temp_iters) {
           render(renderer, window);
         }
         break;
+      }
       case SDLK_c:
         color += 1;
         if (color > total_colors) {
           color = 0;
         }
+        render(renderer, window);
+        break;
+      case SDLK_v:
+        set += 1;
+        if (set > sets) {
+          set = 0;
+        }
+        render(renderer, window);
+        break;
+      case SDLK_b:
+        normalized = !normalized;
         render(renderer, window);
         break;
       }

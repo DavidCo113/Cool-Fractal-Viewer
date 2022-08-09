@@ -16,6 +16,10 @@ R and numpad 0 | Reset position
 
 C | Change colors
 
+V | Change set
+
+B | Toggle normalized rendering
+
 F11 | Fullscreen
 
 Left-click | Center on mouse
@@ -25,4 +29,4 @@ Scroll wheel | Scroll into (or away from) mouse position
 ## Credits
 Top Shelf Technology - [Tutorial](https://dbuild.xyz/Mandelbrot%20Tutorial.html)
 
-[Mandelbrot.js](https://github.com/cslarsen/mandelbrot-js) - Aspect ratio and auto-iterations code
+[Mandelbrot.js](https://github.com/cslarsen/mandelbrot-js) - Aspect ratio, auto-iterations code and some coloring code, also just a pretty cool project.

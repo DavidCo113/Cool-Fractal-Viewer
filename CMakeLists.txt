@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(fractal VERSION 1.0)
+project(fractal VERSION 1.1)
 
-option(USE_LONGDOUBLE "Use long doubles for keeping track of zoom" ON)
+option(USE_LONGDOUBLE "Use long doubles for keeping track of zoom" ON) #WIP, forced on for now.
 
 configure_file(config.h.in config.h)
 
