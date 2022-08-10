@@ -821,7 +821,7 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       SDL_SetRenderTarget(renderer, rendered);
 
       SDL_PumpEvents();
-      SDL_Event events[0];
+      SDL_Event events[1];
       if (SDL_PeepEvents(events, 1, SDL_PEEKEVENT, SDL_QUIT, SDL_QUIT)) {
         render_incomplete = true;
         break;
