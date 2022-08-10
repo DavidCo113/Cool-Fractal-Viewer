@@ -19,7 +19,6 @@
 #include "build/config.h"
 #include "sierpinski.h"
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_thread.h>
 #include <algorithm>
 #include <chrono>
 #include <complex>
@@ -30,18 +29,19 @@
 #include <typeinfo>
 #include <vector>
 unsigned int set = 0;
-unsigned int color = 2; // make color an int because i don't wanna come up with
-                        // names for the colorschemes and maybe it's better for performance idk
+unsigned int color =
+    2; // make color an int because i don't wanna come up with
+       // names for the colorschemes and maybe it's better for performance idk
 const unsigned int total_colors =
     3; // how many colorschemes have actually been programmed in
-const unsigned int sets = 2; // ignore sierpinski, it's annoying.
+const unsigned int sets = 2;    // ignore sierpinski, it's annoying.
 const unsigned int et_sets = 2; // i'll let you guess
 const std::vector<std::string> set_names = {"mandelbrot", "tricorn",
-                                    "burning_ship", "sierpinski"};
+                                            "burning_ship", "sierpinski"};
 bool normalized = true;
 unsigned long int iterations = 1024;
 // unsigned long int auto_iterations = 16384; // WIP
-long double d = 2; // WIP
+long double d = 2;             // WIP
 const unsigned int radius = 4; // probably shouldn't change this
 const bool multisample = false;
 const int r = 2;
@@ -61,6 +61,7 @@ const SDL_BlendMode blend = SDL_BLENDMODE_NONE;
 SDL_Texture *rendered;
 bool d_is_int;
 std::complex<int> prevsize;
+bool quit = false; // you are stupid if you change this to true
 const double log_2 = log(2);
 
 char *str_to_char(std::string str) {
@@ -571,8 +572,8 @@ int render_escape_time_i(SDL_Renderer *renderer, SDL_Window *window) {
 */
 
 std::vector<double> compute_escape_time(unsigned int starty, unsigned int endy,
-                                       unsigned int ix, int win_w, int win_h,
-                                       unsigned int iz) {
+                                        unsigned int ix, int win_w, int win_h,
+                                        unsigned int iz) {
   std::vector<double> renderedvec;
 
   unsigned int iters;
@@ -586,15 +587,15 @@ std::vector<double> compute_escape_time(unsigned int starty, unsigned int endy,
       long double y_point = std::lerp(-aspect_zoom.imag() + y_pos,
                                       aspect_zoom.imag() + y_pos, y / win_h);
       switch (set) {
-        case 0:
-          iters = in_mand_set2(std::complex<long double>(x_point, y_point));
-          break;
-        case 1:
-          iters = in_tric_set(std::complex<long double>(x_point, y_point));
-          break;
-        case 2:
-          iters = in_ship_set(std::complex<long double>(x_point, y_point));
-          break;
+      case 0:
+        iters = in_mand_set2(std::complex<long double>(x_point, y_point));
+        break;
+      case 1:
+        iters = in_tric_set(std::complex<long double>(x_point, y_point));
+        break;
+      case 2:
+        iters = in_ship_set(std::complex<long double>(x_point, y_point));
+        break;
       }
 
       renderedvec.push_back(iters);
@@ -620,15 +621,15 @@ std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
       long double y_point = std::lerp(-aspect_zoom.imag() + y_pos,
                                       aspect_zoom.imag() + y_pos, y / win_h);
       switch (set) {
-        case 0:
-          iters = in_mand_set_norm(std::complex<long double>(x_point, y_point));
-          break;
-        case 1:
-          iters = in_tric_set_norm(std::complex<long double>(x_point, y_point));
-          break;
-        case 2:
-          iters = in_ship_set_norm(std::complex<long double>(x_point, y_point));
-          break;
+      case 0:
+        iters = in_mand_set_norm(std::complex<long double>(x_point, y_point));
+        break;
+      case 1:
+        iters = in_tric_set_norm(std::complex<long double>(x_point, y_point));
+        break;
+      case 2:
+        iters = in_ship_set_norm(std::complex<long double>(x_point, y_point));
+        break;
       }
 
       renderedvec.push_back(iters);
@@ -639,6 +640,7 @@ std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
 }
 
 int render(SDL_Renderer *renderer, SDL_Window *window) {
+  bool render_incomplete = false;
   // if current fractal uses escape time, render it.
   if (set <= et_sets) {
     int win_w, win_h;
@@ -718,22 +720,24 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       // render on other threads
       for (unsigned int i = 0; i < threads - 1; i += 1) {
         if (normalized) {
-          futures.push_back(std::async(compute_normalized, chunksize * i,
-                                      chunksize * (i + 1), ix, win_w, win_h, 4));
+          futures.push_back(std::async(std::launch::async, compute_normalized,
+                                       chunksize * i, chunksize * (i + 1), ix,
+                                       win_w, win_h, 4));
         } else {
-          futures.push_back(std::async(compute_escape_time, chunksize * i,
-                                      chunksize * (i + 1), ix, win_w, win_h, 4));
+          futures.push_back(std::async(std::launch::async, compute_escape_time,
+                                       chunksize * i, chunksize * (i + 1), ix,
+                                       win_w, win_h, 4));
         }
       }
 
       // do some rendering on the main thread
       std::vector<double> lastrender;
       if (normalized) {
-        lastrender = compute_normalized(
-            chunksize * (threads - 1), win_h, ix, win_w, win_h, 4);
+        lastrender = compute_normalized(chunksize * (threads - 1), win_h, ix,
+                                        win_w, win_h, 4);
       } else {
-        lastrender = compute_escape_time(
-            chunksize * (threads - 1), win_h, ix, win_w, win_h, 4);
+        lastrender = compute_escape_time(chunksize * (threads - 1), win_h, ix,
+                                         win_w, win_h, 4);
       }
 
       // wait for the threads
@@ -782,11 +786,11 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
                 rgb = hue_to_rgb(std::fmod(iters, 360), 1);
                 break;
               case 1:
-                rgb = hue_to_rgb(iters / iterations * 360, 1);
+                rgb = hue_to_rgb((iters / iterations) * 360, 1);
                 break;
               case 2:
-                rgb = hue_to_rgb(iters / iterations * 360,
-                                 10 * iters / iterations);
+                rgb = hue_to_rgb((iters / iterations) * 360,
+                                 (10 * iters) / iterations);
                 break;
               case 3:
                 unsigned int grayscale = (iters / iterations) * 255;
@@ -815,6 +819,29 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       SDL_RenderCopy(renderer, rendered, NULL, NULL);
       SDL_RenderPresent(renderer);
       SDL_SetRenderTarget(renderer, rendered);
+
+      SDL_PumpEvents();
+      SDL_Event events[0];
+      if (SDL_PeepEvents(events, 1, SDL_PEEKEVENT, SDL_QUIT, SDL_QUIT)) {
+        render_incomplete = true;
+        break;
+      }
+      if (SDL_PeepEvents(events, 1, SDL_PEEKEVENT, SDL_KEYDOWN, SDL_MOUSEWHEEL)) {
+        render_incomplete = true;
+        if (events[0].type == SDL_KEYDOWN) {
+          switch (events[0].key.keysym.sym) { // maybe do something for SDLK_BACKSLASH?
+          case SDLK_s:
+            render_incomplete = false;
+            break;
+          case SDLK_KP_ENTER:
+            render_incomplete = false;
+            break;
+          }
+        }
+        if (render_incomplete) {
+          break;
+        }
+      }
     }
 
     SDL_SetRenderTarget(renderer, NULL);
@@ -826,6 +853,10 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
                        str_to_char("Cool Fractal Viewer (" +
                                    std::to_string(diff.count()) + " s)"));
 
+    if (render_incomplete) {
+      SDL_SetWindowTitle(window, "Cool Fractal Viewer (RENDER INCOMPLETE)");
+      return 1;
+    }
   } else if (set == 3) {
     SDL_SetWindowTitle(window, "Cool Fractal Viewer (Rendering)");
     std::chrono::steady_clock::time_point start =
@@ -843,19 +874,295 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
   return 0;
 }
 
+int handle_events(SDL_Event event, SDL_Renderer *renderer, SDL_Window *window) {
+  switch (event.type) {
+  case SDL_QUIT:
+    quit = true;
+    break;
+  case SDL_KEYDOWN:
+    switch (event.key.keysym.sym) {
+    case SDLK_ESCAPE:
+      quit = true;
+      break;
+    case SDLK_s:
+      screenshot(renderer, window);
+      break;
+    case SDLK_KP_ENTER:
+      screenshot(renderer, window);
+      break;
+    case SDLK_DOWN: // down
+      y_pos += zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_2: // down keypad
+      y_pos += zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_1: // down left keypad
+      y_pos += zoom;
+      x_pos -= zoom;
+      render(renderer, window);
+      break;
+    case SDLK_LEFT: // left
+      x_pos -= zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_4: // left keypad
+      x_pos -= zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_7: // left up keypad
+      x_pos -= zoom;
+      y_pos -= zoom;
+      render(renderer, window);
+      break;
+    case SDLK_UP: // up
+      y_pos -= zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_8: // up keypad
+      y_pos -= zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_9: // up right keypad
+      y_pos -= zoom;
+      x_pos += zoom;
+      render(renderer, window);
+      break;
+    case SDLK_RIGHT: // right
+      x_pos += zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_6: // right keypad
+      x_pos += zoom;
+      render(renderer, window);
+      break;
+    case SDLK_KP_3: // right down keypad
+      x_pos += zoom;
+      y_pos += zoom;
+      render(renderer, window);
+      break;
+    case SDLK_PLUS: // zoom in
+      zoom /= 2;
+      render(renderer, window);
+      break;
+    case SDLK_KP_PLUS: // zoom in keypad
+      zoom /= 2;
+      render(renderer, window);
+      break;
+    case SDLK_EQUALS: // zoom in
+      zoom /= 2;
+      render(renderer, window);
+      break;
+    case SDLK_MINUS: // zoom out
+      zoom *= 2;
+      render(renderer, window);
+      break;
+    case SDLK_KP_MINUS: // zoom out keypad
+      zoom *= 2;
+      render(renderer, window);
+      break;
+    case SDLK_KP_DIVIDE: // decrease iterations keypad
+      if (!automatic_iters) {
+        iterations /= 1.5;
+        render(renderer, window);
+      }
+      break;
+    case SDLK_KP_MULTIPLY: // increase iterations keypad
+      if (!automatic_iters) {
+        iterations *= 1.5;
+        render(renderer, window);
+      }
+      break;
+    case SDLK_LEFTBRACKET: // decrease iterations
+      if (!automatic_iters) {
+        iterations /= 1.5;
+        render(renderer, window);
+      }
+      break;
+    case SDLK_RIGHTBRACKET: // increase iterations
+      if (!automatic_iters) {
+        iterations *= 1.5;
+        render(renderer, window);
+      }
+      break;
+    case SDLK_r: // reset position
+      x_pos = 0;
+      y_pos = 0;
+      zoom = 2;
+      render(renderer, window);
+      break;
+    case SDLK_KP_0: // reset position keypad
+      x_pos = 0;
+      y_pos = 0;
+      zoom = 2;
+      render(renderer, window);
+      break;
+    case SDLK_F11: // fullscreen
+      if (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) {
+        SDL_SetWindowFullscreen(window, 0);
+        SDL_SetWindowSize(window, prevsize.real(), prevsize.imag());
+      } else {
+        SDL_DisplayMode DM;
+        SDL_GetDesktopDisplayMode(0, &DM);
+        int win_w, win_h;
+        SDL_GetWindowSize(window, &win_w, &win_h);
+        prevsize = std::complex<int>(win_w, win_h);
+
+        int w = DM.w;
+        int h = DM.h;
+        SDL_SetWindowSize(window, w, h);
+        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+      }
+      break;
+    case SDLK_BACKSLASH: {
+      unsigned long int temp_iters = iterations;
+      automatic_iters = !automatic_iters;
+      if (automatic_iters) {
+        auto_iters();
+      }
+      if (iterations != temp_iters) {
+        render(renderer, window);
+      }
+      break;
+    }
+    case SDLK_c:
+      color += 1;
+      if (color > total_colors) {
+        color = 0;
+      }
+      render(renderer, window);
+      break;
+    case SDLK_v:
+      set += 1;
+      if (set > sets) {
+        set = 0;
+      }
+      render(renderer, window);
+      break;
+    case SDLK_b:
+      normalized = !normalized;
+      render(renderer, window);
+      break;
+    }
+    break;
+  case SDL_MOUSEBUTTONDOWN:
+    if (event.button.button ==
+        SDL_BUTTON_LEFT) { // center screen on mouse cursor upon left-click
+      int win_w, win_h;
+      SDL_GetWindowSize(window, &win_w, &win_h);
+
+      x_pos += (double(event.button.x) / win_w - 0.5) * aspect_zoom.real() * 2;
+      y_pos += (double(event.button.y) / win_h - 0.5) * aspect_zoom.imag() * 2;
+      render(renderer, window);
+    }
+    break;
+  case SDL_MOUSEWHEEL:
+    if (event.wheel.y > 0) { // zoom in on mouse cursor on scroll up
+      int win_w, win_h;
+      SDL_GetWindowSize(window, &win_w, &win_h);
+
+      int mouse_x, mouse_y;
+      SDL_GetMouseState(&mouse_x, &mouse_y);
+
+      x_pos += (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
+      y_pos += (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
+      zoom /= 2;
+
+      double ratioA = abs((-zoom + x_pos) - (zoom + x_pos)) /
+                      abs((-zoom + y_pos) - (zoom + y_pos));
+      double ratioB = double(win_w) / win_h;
+
+      if (ratioB > ratioA) {
+        double Xratio = ratioB / ratioA;
+        aspect_zoom.real(zoom);
+        aspect_zoom.imag(zoom);
+        aspect_zoom.real(aspect_zoom.real() * Xratio);
+      } else {
+        double Yratio = ratioA / ratioB;
+        aspect_zoom.real(zoom);
+        aspect_zoom.imag(zoom);
+        aspect_zoom.imag(aspect_zoom.imag() * Yratio);
+      }
+
+      x_pos -= (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
+      y_pos -= (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
+
+      render(renderer, window);
+    } else if (event.wheel.y <
+               0) { // zoom out away from mouse cursor on scroll down
+      int win_w, win_h;
+      SDL_GetWindowSize(window, &win_w, &win_h);
+
+      int mouse_x, mouse_y;
+      SDL_GetMouseState(&mouse_x, &mouse_y);
+
+      x_pos += (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
+      y_pos += (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
+      zoom *= 2;
+
+      double ratioA = abs((-zoom + x_pos) - (zoom + x_pos)) /
+                      abs((-zoom + y_pos) - (zoom + y_pos));
+      double ratioB = double(win_w) / win_h;
+
+      if (ratioB > ratioA) {
+        double Xratio = ratioB / ratioA;
+        aspect_zoom.real(zoom);
+        aspect_zoom.imag(zoom);
+        aspect_zoom.real(aspect_zoom.real() * Xratio);
+      } else {
+        double Yratio = ratioA / ratioB;
+        aspect_zoom.real(zoom);
+        aspect_zoom.imag(zoom);
+        aspect_zoom.imag(aspect_zoom.imag() * Yratio);
+      }
+
+      x_pos -= (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
+      y_pos -= (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
+
+      render(renderer, window);
+    }
+    break;
+  case SDL_WINDOWEVENT:
+    switch (event.window.event) {
+    case SDL_WINDOWEVENT_RESIZED: // rerender on resize
+      render(renderer, window);
+      break;
+    }
+  }
+
+  return 0;
+}
+
 #ifdef __cplusplus
 extern "C"
 #endif
     int
     main(int argc, char *argv[]) {
-  bool quit = false;
   if (threads == 0) {
     threads = 1;
   }
-  SDL_Event event;
 
   SDL_Init(SDL_INIT_VIDEO);
   atexit(SDL_Quit);
+
+  // disable events we don't care about
+  SDL_EventState(SDL_DROPFILE, SDL_DISABLE);
+  SDL_EventState(SDL_DROPTEXT, SDL_DISABLE);
+  SDL_EventState(SDL_DROPBEGIN, SDL_DISABLE);
+  SDL_EventState(SDL_DROPCOMPLETE, SDL_DISABLE);
+  SDL_EventState(SDL_CLIPBOARDUPDATE, SDL_DISABLE);
+  SDL_EventState(SDL_AUDIODEVICEADDED, SDL_DISABLE);
+  SDL_EventState(SDL_AUDIODEVICEREMOVED, SDL_DISABLE);
+  SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
+  SDL_EventState(SDL_MOUSEBUTTONUP, SDL_DISABLE);
+  SDL_EventState(SDL_RENDER_TARGETS_RESET, SDL_DISABLE);
+  SDL_EventState(SDL_RENDER_DEVICE_RESET, SDL_DISABLE);
+  SDL_EventState(SDL_KEYUP, SDL_DISABLE);
+  SDL_EventState(SDL_TEXTEDITING, SDL_DISABLE);
+  SDL_EventState(SDL_TEXTINPUT, SDL_DISABLE);
+  SDL_EventState(SDL_KEYMAPCHANGED, SDL_DISABLE);
+  SDL_EventState(SDL_SYSWMEVENT, SDL_DISABLE);
 
   if (multisample) {
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
@@ -871,13 +1178,16 @@ extern "C"
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
   SDL_SetRenderDrawBlendMode(renderer, blend);
 
-  SDL_Log(str_to_char("Cool Fractal Viewer v" + std::to_string(fractal_VERSION_MAJOR) + "." + std::to_string(fractal_VERSION_MINOR) + "\n  Copyright (C) 2022 David Cole\n  This program "
-          "is free software: you\n  can redistribute it and/or modify\n  it "
-          "under the terms of the GNU General Public License as published by\n "
-          " the Free Software Foundation, either version 3 of the License, "
-          "or\n  (at your option) any later version.\n\n  You should have "
-          "received a copy of the GNU General Public License\n  along with "
-          "this program.  If not, see <https://www.gnu.org/licenses/>.\n\n"));
+  SDL_Log(str_to_char(
+      "Cool Fractal Viewer v" + std::to_string(fractal_VERSION_MAJOR) + "." +
+      std::to_string(fractal_VERSION_MINOR) +
+      "\n  Copyright (C) 2022 David Cole\n  This program "
+      "is free software: you\n  can redistribute it and/or modify\n  it "
+      "under the terms of the GNU General Public License as published by\n "
+      " the Free Software Foundation, either version 3 of the License, "
+      "or\n  (at your option) any later version.\n\n  You should have "
+      "received a copy of the GNU General Public License\n  along with "
+      "this program.  If not, see <https://www.gnu.org/licenses/>.\n\n"));
 
   if (typeid(zoom) == typeid(long double)) {
     SDL_Log("Using long precision");
@@ -920,274 +1230,17 @@ extern "C"
 
   render(renderer, window);
 
+  SDL_Event event;
   while (!quit) {
     SDL_WaitEvent(&event);
+    SDL_FlushEvents(SDL_KEYDOWN, SDL_MOUSEWHEEL);
+    handle_events(event, renderer, window);
 
-    switch (event.type) {
-    case SDL_QUIT:
-      quit = true;
-      break;
-    case SDL_KEYDOWN:
-      switch (event.key.keysym.sym) {
-      case SDLK_ESCAPE:
-        quit = true;
-        break;
-      case SDLK_s:
-        screenshot(renderer, window);
-        break;
-      case SDLK_KP_ENTER:
-        screenshot(renderer, window);
-        break;
-      case SDLK_DOWN: // down
-        y_pos += zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_2: // down keypad
-        y_pos += zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_1: // down left keypad
-        y_pos += zoom;
-        x_pos -= zoom;
-        render(renderer, window);
-        break;
-      case SDLK_LEFT: // left
-        x_pos -= zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_4: // left keypad
-        x_pos -= zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_7: // left up keypad
-        x_pos -= zoom;
-        y_pos -= zoom;
-        render(renderer, window);
-        break;
-      case SDLK_UP: // up
-        y_pos -= zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_8: // up keypad
-        y_pos -= zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_9: // up right keypad
-        y_pos -= zoom;
-        x_pos += zoom;
-        render(renderer, window);
-        break;
-      case SDLK_RIGHT: // right
-        x_pos += zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_6: // right keypad
-        x_pos += zoom;
-        render(renderer, window);
-        break;
-      case SDLK_KP_3: // right down keypad
-        x_pos += zoom;
-        y_pos += zoom;
-        render(renderer, window);
-        break;
-      case SDLK_PLUS: // zoom in
-        zoom /= 2;
-        render(renderer, window);
-        break;
-      case SDLK_KP_PLUS: // zoom in keypad
-        zoom /= 2;
-        render(renderer, window);
-        break;
-      case SDLK_EQUALS: // zoom in
-        zoom /= 2;
-        render(renderer, window);
-        break;
-      case SDLK_MINUS: // zoom out
-        zoom *= 2;
-        render(renderer, window);
-        break;
-      case SDLK_KP_MINUS: // zoom out keypad
-        zoom *= 2;
-        render(renderer, window);
-        break;
-      case SDLK_KP_DIVIDE: // decrease iterations keypad
-        if (!automatic_iters) {
-          iterations /= 1.5;
-          render(renderer, window);
-        }
-        break;
-      case SDLK_KP_MULTIPLY: // increase iterations keypad
-        if (!automatic_iters) {
-          iterations *= 1.5;
-          render(renderer, window);
-        }
-        break;
-      case SDLK_LEFTBRACKET: // decrease iterations
-        if (!automatic_iters) {
-          iterations /= 1.5;
-          render(renderer, window);
-        }
-        break;
-      case SDLK_RIGHTBRACKET: // increase iterations
-        if (!automatic_iters) {
-          iterations *= 1.5;
-          render(renderer, window);
-        }
-        break;
-      case SDLK_r: // reset position
-        x_pos = 0;
-        y_pos = 0;
-        zoom = 2;
-        render(renderer, window);
-        break;
-      case SDLK_KP_0: // reset position keypad
-        x_pos = 0;
-        y_pos = 0;
-        zoom = 2;
-        render(renderer, window);
-        break;
-      case SDLK_F11: // fullscreen
-        if (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) {
-          SDL_SetWindowFullscreen(window, 0);
-          SDL_SetWindowSize(window, prevsize.real(), prevsize.imag());
-        } else {
-          SDL_DisplayMode DM;
-          SDL_GetDesktopDisplayMode(0, &DM);
-          int win_w, win_h;
-          SDL_GetWindowSize(window, &win_w, &win_h);
-          prevsize = std::complex<int>(win_w, win_h);
-
-          int w = DM.w;
-          int h = DM.h;
-          SDL_SetWindowSize(window, w, h);
-          SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
-        }
-        break;
-      case SDLK_BACKSLASH:
-      {
-        unsigned long int temp_iters = iterations;
-        automatic_iters = !automatic_iters;
-        if (automatic_iters) {
-          auto_iters();
-        }
-        if (iterations != temp_iters) {
-          render(renderer, window);
-        }
-        break;
-      }
-      case SDLK_c:
-        color += 1;
-        if (color > total_colors) {
-          color = 0;
-        }
-        render(renderer, window);
-        break;
-      case SDLK_v:
-        set += 1;
-        if (set > sets) {
-          set = 0;
-        }
-        render(renderer, window);
-        break;
-      case SDLK_b:
-        normalized = !normalized;
-        render(renderer, window);
-        break;
-      }
-      break;
-    case SDL_MOUSEBUTTONDOWN:
-      if (event.button.button ==
-          SDL_BUTTON_LEFT) { // center screen on mouse cursor upon left-click
-        int win_w, win_h;
-        SDL_GetWindowSize(window, &win_w, &win_h);
-
-        x_pos +=
-            (double(event.button.x) / win_w - 0.5) * aspect_zoom.real() * 2;
-        y_pos +=
-            (double(event.button.y) / win_h - 0.5) * aspect_zoom.imag() * 2;
-        render(renderer, window);
-      }
-      break;
-    case SDL_MOUSEWHEEL:
-      if (event.wheel.y > 0) { // zoom in on mouse cursor on scroll up
-        int win_w, win_h;
-        SDL_GetWindowSize(window, &win_w, &win_h);
-
-        int mouse_x, mouse_y;
-        SDL_GetMouseState(&mouse_x, &mouse_y);
-
-        x_pos += (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
-        y_pos += (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
-        zoom /= 2;
-
-        double ratioA = abs((-zoom + x_pos) - (zoom + x_pos)) /
-                        abs((-zoom + y_pos) - (zoom + y_pos));
-        double ratioB = double(win_w) / win_h;
-
-        if (ratioB > ratioA) {
-          double Xratio = ratioB / ratioA;
-          aspect_zoom.real(zoom);
-          aspect_zoom.imag(zoom);
-          aspect_zoom.real(aspect_zoom.real() * Xratio);
-        } else {
-          double Yratio = ratioA / ratioB;
-          aspect_zoom.real(zoom);
-          aspect_zoom.imag(zoom);
-          aspect_zoom.imag(aspect_zoom.imag() * Yratio);
-        }
-
-        x_pos -= (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
-        y_pos -= (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
-
-        render(renderer, window);
-      } else if (event.wheel.y <
-                 0) { // zoom out away from mouse cursor on scroll down
-        int win_w, win_h;
-        SDL_GetWindowSize(window, &win_w, &win_h);
-
-        int mouse_x, mouse_y;
-        SDL_GetMouseState(&mouse_x, &mouse_y);
-
-        x_pos += (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
-        y_pos += (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
-        zoom *= 2;
-
-        double ratioA = abs((-zoom + x_pos) - (zoom + x_pos)) /
-                        abs((-zoom + y_pos) - (zoom + y_pos));
-        double ratioB = double(win_w) / win_h;
-
-        if (ratioB > ratioA) {
-          double Xratio = ratioB / ratioA;
-          aspect_zoom.real(zoom);
-          aspect_zoom.imag(zoom);
-          aspect_zoom.real(aspect_zoom.real() * Xratio);
-        } else {
-          double Yratio = ratioA / ratioB;
-          aspect_zoom.real(zoom);
-          aspect_zoom.imag(zoom);
-          aspect_zoom.imag(aspect_zoom.imag() * Yratio);
-        }
-
-        x_pos -= (double(mouse_x) / win_w - 0.5) * aspect_zoom.real() * 2;
-        y_pos -= (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
-
-        render(renderer, window);
-      }
-      break;
-    case SDL_WINDOWEVENT:
-      switch (event.window.event) {
-      case SDL_WINDOWEVENT_RESIZED: // rerender on resize
-        render(renderer, window);
-        break;
-      }
-    }
     // render frame
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, rendered, NULL, NULL);
     SDL_RenderPresent(renderer);
-
-    SDL_FlushEvents(SDL_KEYDOWN, SDL_MOUSEWHEEL);
   }
 
   return 0;
