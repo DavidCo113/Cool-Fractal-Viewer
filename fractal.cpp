@@ -17,7 +17,9 @@
 */
 
 #include "build/config.h"
-#include "sierpinski.h"
+// #include "sierpinski.h"
+#include "icon.xpm"
+#include "load_xpm.h"
 #include <SDL2/SDL.h>
 #include <algorithm>
 #include <chrono>
@@ -34,10 +36,10 @@ unsigned int color =
        // names for the colorschemes and maybe it's better for performance idk
 const unsigned int total_colors =
     3; // how many colorschemes have actually been programmed in
-const unsigned int sets = 2;    // ignore sierpinski, it's annoying.
-const unsigned int et_sets = 2; // i'll let you guess
+const unsigned int sets = 3;    // ignore sierpinski, it's annoying.
+const unsigned int et_sets = 3; // i'll let you guess
 const std::vector<std::string> set_names = {"mandelbrot", "tricorn",
-                                            "burning_ship", "sierpinski"};
+                                            "burning_ship", "julia", "sierpinski"};
 bool normalized = true;
 unsigned long int iterations = 1024;
 // unsigned long int auto_iterations = 16384; // WIP
@@ -63,6 +65,7 @@ bool d_is_int;
 std::complex<int> prevsize;
 bool quit = false; // you are stupid if you change this to true
 const double log_2 = log(2);
+std::complex<long double> julia_c;
 
 char *str_to_char(std::string str) {
   char *out = new char[str.size() + 1];
@@ -71,8 +74,7 @@ char *str_to_char(std::string str) {
 }
 
 int load_icon(SDL_Window *window) {
-  SDL_RWops *file = SDL_RWFromFile("icon.bmp", "rb");
-  SDL_Surface *image = SDL_LoadBMP_RW(file, SDL_TRUE);
+  SDL_Surface *image = IMG_ReadXPMFromArray(icon_xpm);
 
   if (!image) {
     SDL_Log("Failed to load icon");
@@ -84,7 +86,7 @@ int load_icon(SDL_Window *window) {
   return 0;
 }
 
-int in_mand_set(std::complex<long double> c) {
+int in_mand_set(std::complex<long double> c) { // this one's unused, try going down two functions
   std::complex<long double> z(0, 0);
   for (unsigned int i = 0; i < iterations; i++) {
     z = std::pow(z, d) + c;
@@ -95,7 +97,7 @@ int in_mand_set(std::complex<long double> c) {
   return 0;
 }
 
-int in_mand_set_orbit(std::complex<long double> c) {
+int in_mand_set_orbit(std::complex<long double> c) { // this is also unused, go down one function
   std::complex<long double> z(0, 0);
   std::complex<long double> zfast(0, 0);
   unsigned int i = 0;
@@ -139,12 +141,28 @@ int in_mand_set2(std::complex<long double> c) {
 }
 
 double in_mand_set_norm(std::complex<long double> c) {
-  std::complex<long double> z(0, 0);
+  std::complex<long double> z(0, 0); // try playing around with this
   unsigned int i = iterations;
   while (i) {
     i--;
     long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
     z.imag(2 * z.real() * z.imag() + c.imag());
+    z.real(xtemp);
+    double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
+
+    if (modulus > radius) {
+      return iterations - i - (log(log(modulus))) / log_2;
+    }
+  }
+  return 0;
+}
+
+double in_julia_set_norm(std::complex<long double> z) {
+  unsigned int i = iterations;
+  while (i) {
+    i--;
+    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + julia_c.real();
+    z.imag(2 * z.real() * z.imag() + julia_c.imag());
     z.real(xtemp);
     double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
 
@@ -293,12 +311,15 @@ std::vector<unsigned int> hue_to_rgb(double h, double v) {
 
 int in_ship_set(std::complex<long double> c) {
   std::complex<double> z(0, 0);
-  for (unsigned int i = 0; i < iterations; i++) {
+  unsigned int i = iterations;
+  while (i) {
+    i--;
     long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
     z.imag(abs(2 * z.real() * z.imag()) + c.imag());
     z.real(xtemp);
-    if (std::norm(z) > 4) {
-      return i;
+
+    if (std::norm(z) > radius) {
+      return iterations - i;
     }
   }
   return 0;
@@ -306,12 +327,30 @@ int in_ship_set(std::complex<long double> c) {
 
 int in_tric_set(std::complex<long double> c) {
   std::complex<double> z(0, 0);
-  for (unsigned int i = 0; i < iterations; i++) {
+  unsigned int i = iterations;
+  while (i) {
+    i--;
     double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
     z.imag(-2 * z.real() * z.imag() + c.imag());
     z.real(xtemp);
-    if (std::norm(z) > 4) {
-      return i;
+
+    if (std::norm(z) > radius) {
+      return iterations - i;
+    }
+  }
+  return 0;
+}
+
+int in_julia_set(std::complex<long double> z) {
+  unsigned int i = iterations;
+  while (i) {
+    i--;
+    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + julia_c.real();
+    z.imag(2 * z.real() * z.imag() + julia_c.imag());
+    z.real(xtemp);
+
+    if (std::norm(z) > radius) {
+      return iterations - i;
     }
   }
   return 0;
@@ -596,6 +635,9 @@ std::vector<double> compute_escape_time(unsigned int starty, unsigned int endy,
       case 2:
         iters = in_ship_set(std::complex<long double>(x_point, y_point));
         break;
+      case 3:
+        iters = in_julia_set(std::complex<long double>(x_point, y_point));
+        break;
       }
 
       renderedvec.push_back(iters);
@@ -630,6 +672,8 @@ std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
       case 2:
         iters = in_ship_set_norm(std::complex<long double>(x_point, y_point));
         break;
+      case 3:
+        iters = in_julia_set_norm(std::complex<long double>(x_point, y_point));
       }
 
       renderedvec.push_back(iters);
@@ -826,10 +870,13 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
         render_incomplete = true;
         break;
       }
-      if (SDL_PeepEvents(events, 1, SDL_PEEKEVENT, SDL_KEYDOWN, SDL_MOUSEWHEEL)) {
+      if (SDL_PeepEvents(events, 1, SDL_PEEKEVENT, SDL_KEYDOWN,
+                         SDL_MOUSEWHEEL)) {
         render_incomplete = true;
         if (events[0].type == SDL_KEYDOWN) {
-          switch (events[0].key.keysym.sym) { // maybe do something for SDLK_BACKSLASH?
+          switch (
+              events[0]
+                  .key.keysym.sym) { // maybe do something for SDLK_BACKSLASH?
           case SDLK_s:
             render_incomplete = false;
             break;
@@ -857,12 +904,12 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       SDL_SetWindowTitle(window, "Cool Fractal Viewer (RENDER INCOMPLETE)");
       return 1;
     }
-  } else if (set == 3) {
+  } else if (set == 4) {
     SDL_SetWindowTitle(window, "Cool Fractal Viewer (Rendering)");
     std::chrono::steady_clock::time_point start =
         std::chrono::steady_clock::now();
 
-    rendered = render_sierpinski(renderer, window, iterations, rendered);
+//     rendered = render_sierpinski(renderer, window, iterations, rendered);
 
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
@@ -1037,6 +1084,21 @@ int handle_events(SDL_Event event, SDL_Renderer *renderer, SDL_Window *window) {
       set += 1;
       if (set > sets) {
         set = 0;
+      } if (set == 3) {
+        julia_c = std::complex<long double>(x_pos, y_pos);
+      }
+      render(renderer, window);
+      break;
+    case SDLK_f:
+      if (set) {
+        set -= 1;
+      } else {
+        set = sets;
+      }
+      if (set > sets) {
+        set = 0;
+      } if (set == 3) {
+        julia_c = std::complex<long double>(x_pos, y_pos);
       }
       render(renderer, window);
       break;

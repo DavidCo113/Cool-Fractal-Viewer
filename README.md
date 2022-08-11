@@ -16,7 +16,9 @@ R and numpad 0 | Reset position
 
 C | Change colors
 
-V | Change set
+V | Up one set
+
+F | Down one set
 
 B | Toggle normalized rendering
 

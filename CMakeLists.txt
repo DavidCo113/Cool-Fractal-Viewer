@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(fractal VERSION 1.2)
+project(fractal VERSION 1.3)
 
 option(USE_LONGDOUBLE "Use long doubles for keeping track of zoom" ON) #WIP, forced on for now.
 
@@ -18,7 +18,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
-    set(file_list "icon.bmp;LICENSE.md;README.md")
+    set(file_list "LICENSE.md;README.md")
     
     foreach(file IN LISTS file_list)
         message(STATUS ${file})
@@ -53,19 +53,18 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
 endif()
 
 add_custom_target(distclean COMMAND make clean COMMAND ${CMAKE_COMMAND} -E rm -r *.cmake CMakeCache.txt config.h Makefile CMakeFiles _CPack_Packages fractal-*.*-* install_manifest.txt)
-add_custom_target(depends ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icon.bmp;${CMAKE_CURRENT_BINARY_DIR}/README.md;${CMAKE_CURRENT_BINARY_DIR}/LICENSE.md")
+add_custom_target(depends ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/README.md;${CMAKE_CURRENT_BINARY_DIR}/LICENSE.md")
 
 add_executable(fractal fractal.cpp)
 
 install(TARGETS fractal DESTINATION bin)
-install(FILES "${PROJECT_BINARY_DIR}/icon.bmp" DESTINATION share)
 
 target_include_directories(fractal PUBLIC "${PROJECT_BINARY_DIR}")
 
 find_package(SDL2 REQUIRED)
 
 include_directories(${SDL2_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} "${SDL2_LIBRARIES}")
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
 
 include(InstallRequiredSystemLibraries)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.md")
