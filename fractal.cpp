@@ -35,10 +35,6 @@
 #include <typeinfo>
 #include <vector>
 typedef long double long_double;
-#if (PRECISION_T == mpfr_float)
-#include <boost/multiprecision/mpfr.hpp>
-using namespace boost::multiprecision;
-#endif
 typedef PRECISION_T precision_t; // what type to use for most major calculations, the more precise the deeper you can zoom but the slower it will most likely be.
 typedef long double normalized_t; // which type to use for normalized iteration output, more precise means more smoothness but less speed.
 // #include <boost/math/special_functions/gamma.hpp>
