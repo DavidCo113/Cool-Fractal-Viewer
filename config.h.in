@@ -1,4 +1,4 @@
 #define fractal_VERSION_MAJOR @fractal_VERSION_MAJOR@
 #define fractal_VERSION_MINOR @fractal_VERSION_MINOR@
 #define default_zoom          2
-#cmakedefine USE_LONGDOUBLE
+#define PRECISION_T @PRECISION_T@

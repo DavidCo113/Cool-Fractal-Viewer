@@ -16,58 +16,71 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "build/config.h"
-// #include "sierpinski.h"
-#include "icon.xpm"
+#include "build/config.h" // NOTE: add the following: TODO: use t to change fractal type (sier/mand)
+#include "sierpinski.h" // TODO: make color change not cause mabelbort set recalculation
+#include "icon.xpm" // NOTE: TODO: fix memory leaky
 #include "load_xpm.h"
 #include <SDL2/SDL.h>
 #include <algorithm>
 #include <chrono>
+#include <climits>
+#include <cmath>
 #include <complex>
+#include <cstdint>
 #include <filesystem>
 #include <future>
 #include <iomanip>
+#include <sstream>
 #include <thread>
 #include <typeinfo>
 #include <vector>
+typedef long double long_double;
+#if (PRECISION_T == mpfr_float)
+#include <boost/multiprecision/mpfr.hpp>
+using namespace boost::multiprecision;
+#endif
+typedef PRECISION_T precision_t; // what type to use for most major calculations, the more precise the deeper you can zoom but the slower it will most likely be.
+typedef long double normalized_t; // which type to use for normalized iteration output, more precise means more smoothness but less speed.
+// #include <boost/math/special_functions/gamma.hpp>
 unsigned int set = 0;
 unsigned int color =
     2; // make color an int because i don't wanna come up with
        // names for the colorschemes and maybe it's better for performance idk
-const unsigned int total_colors =
+constexpr unsigned int total_colors =
     3; // how many colorschemes have actually been programmed in
-const unsigned int sets = 3;    // ignore sierpinski, it's annoying.
-const unsigned int et_sets = 3; // i'll let you guess
+constexpr unsigned int sets = 4;
+constexpr unsigned int et_sets = 3; // i'll let you guess
 const std::vector<std::string> set_names = {"mandelbrot", "tricorn",
                                             "burning_ship", "julia", "sierpinski"};
 bool normalized = true;
 unsigned long int iterations = 1024;
 // unsigned long int auto_iterations = 16384; // WIP
 long double d = 2;             // WIP
-const unsigned int radius = 4; // probably shouldn't change this
-const bool multisample = false;
-const int r = 2;
-const int g = 4;
-const int b = 8;
+constexpr unsigned int radius = 4; // probably shouldn't change this
+constexpr bool multisample = false;
+constexpr int r = 2;
+constexpr int g = 4;
+constexpr int b = 8;
 unsigned int threads = std::thread::hardware_concurrency();
 bool automatic_iters = true;
-#ifdef USE_LONGDOUBLE
-long double zoom = default_zoom;
-#else
-double zoom = default_zoom;
-#endif
-std::complex<long double> aspect_zoom(zoom, zoom);
-long double x_pos = 0;
-long double y_pos = 0;
+precision_t zoom = default_zoom;
+std::complex<precision_t> aspect_zoom(zoom, zoom);
+precision_t x_pos = 0;
+precision_t y_pos = 0;
 const SDL_BlendMode blend = SDL_BLENDMODE_NONE;
 SDL_Texture *rendered;
 bool d_is_int;
 std::complex<int> prevsize;
 bool quit = false; // you are stupid if you change this to true
 const double log_2 = log(2);
-std::complex<long double> julia_c;
+std::complex<precision_t> julia_c;
+// std::vector<double> bench;
 
-char *str_to_char(std::string str) {
+precision_t naive_lerp(precision_t a, precision_t b, precision_t t) {
+  return a + t * (b - a);
+}
+
+char *str_to_char(std::string str) { // call delete[] on anything made with this when done with it
   char *out = new char[str.size() + 1];
   strcpy(out, str.c_str());
   return out;
@@ -124,12 +137,12 @@ int in_mand_set_orbit(std::complex<long double> c) { // this is also unused, go 
   }
 }
 
-int in_mand_set2(std::complex<long double> c) {
-  std::complex<long double> z(0, 0);
+int in_mand_set2(std::complex<precision_t> c) {
+  std::complex<precision_t> z(0, 0);
   unsigned int i = iterations;
   while (i) {
     i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() +
+    precision_t xtemp = z.real() * z.real() - z.imag() * z.imag() +
                         c.real(); // z = std::pow(z, d) + c;
     z.imag(2 * z.real() * z.imag() + c.imag());
     z.real(xtemp);
@@ -140,15 +153,15 @@ int in_mand_set2(std::complex<long double> c) {
   return 0;
 }
 
-double in_mand_set_norm(std::complex<long double> c) {
-  std::complex<long double> z(0, 0); // try playing around with this
+normalized_t in_mand_set_norm(std::complex<precision_t> c) {
+  std::complex<precision_t> z(0, 0); // try playing around with this
   unsigned int i = iterations;
   while (i) {
     i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
+    precision_t xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
     z.imag(2 * z.real() * z.imag() + c.imag());
     z.real(xtemp);
-    double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
+    normalized_t modulus = (normalized_t)sqrt(z.real() * z.real() + z.imag() * z.imag());
 
     if (modulus > radius) {
       return iterations - i - (log(log(modulus))) / log_2;
@@ -157,14 +170,14 @@ double in_mand_set_norm(std::complex<long double> c) {
   return 0;
 }
 
-double in_julia_set_norm(std::complex<long double> z) {
+normalized_t in_julia_set_norm(std::complex<precision_t> z) {
   unsigned int i = iterations;
   while (i) {
     i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + julia_c.real();
+    precision_t xtemp = z.real() * z.real() - z.imag() * z.imag() + julia_c.real();
     z.imag(2 * z.real() * z.imag() + julia_c.imag());
     z.real(xtemp);
-    double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
+    normalized_t modulus = (normalized_t)sqrt(z.real() * z.real() + z.imag() * z.imag());
 
     if (modulus > radius) {
       return iterations - i - (log(log(modulus))) / log_2;
@@ -173,16 +186,16 @@ double in_julia_set_norm(std::complex<long double> z) {
   return 0;
 }
 
-double in_ship_set_norm(std::complex<long double> c) {
-  std::complex<long double> z(0, 0);
+normalized_t in_ship_set_norm(std::complex<precision_t> c) {
+  std::complex<precision_t> z(0, 0);
   unsigned int i = iterations;
   while (i) {
     i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
+    precision_t xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
 
     z.imag(abs(2 * z.real() * z.imag()) + c.imag());
     z.real(xtemp);
-    double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
+    normalized_t modulus = (normalized_t)sqrt(z.real() * z.real() + z.imag() * z.imag());
 
     if (modulus > radius) {
       return iterations - i - (log(log(modulus))) / log_2;
@@ -191,16 +204,16 @@ double in_ship_set_norm(std::complex<long double> c) {
   return 0;
 }
 
-double in_tric_set_norm(std::complex<long double> c) {
-  std::complex<long double> z(0, 0);
+normalized_t in_tric_set_norm(std::complex<precision_t> c) {
+  std::complex<precision_t> z(0, 0);
   unsigned int i = iterations;
   while (i) {
     i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
+    precision_t xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
 
     z.imag(-2 * z.real() * z.imag() + c.imag());
     z.real(xtemp);
-    double modulus = sqrt(z.real() * z.real() + z.imag() * z.imag());
+    normalized_t modulus = (normalized_t)sqrt(z.real() * z.real() + z.imag() * z.imag());
 
     if (modulus > radius) {
       return iterations - i - (log(log(modulus))) / log_2;
@@ -210,15 +223,16 @@ double in_tric_set_norm(std::complex<long double> c) {
 }
 
 int auto_iters() {
-  long double f = sqrt(0.001 + 2 * std::min(abs((-aspect_zoom.real() + x_pos) -
+  long double f = (long double)sqrt(0.001 + 2 * std::min(abs((-aspect_zoom.real() + x_pos) -
                                                 (aspect_zoom.real() + x_pos)),
                                             abs((-aspect_zoom.imag() + y_pos) -
-                                                (aspect_zoom.imag() + y_pos))));
+                                                (aspect_zoom.imag() + y_pos)))); // NOTE: TODO: maybe too precise?
 
   iterations = floor(223 / f);
   return 0;
 }
 
+/*
 int auto_iters2(SDL_Window *window) { // WIP
   int win_w, win_h;
   SDL_GetWindowSize(window, &win_w, &win_h);
@@ -272,6 +286,7 @@ int auto_iters2(SDL_Window *window) { // WIP
 
   return 0;
 }
+*/
 
 std::vector<unsigned int> hue_to_rgb(double h, double v) {
   v = std::fmin(v, 1);
@@ -309,13 +324,29 @@ std::vector<unsigned int> hue_to_rgb(double h, double v) {
   return std::vector<unsigned int>{red, green, blue};
 }
 
-int in_ship_set(std::complex<long double> c) {
+int in_ship_set(std::complex<precision_t> c) {
   std::complex<double> z(0, 0);
   unsigned int i = iterations;
   while (i) {
     i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
-    z.imag(abs(2 * z.real() * z.imag()) + c.imag());
+    precision_t xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
+    z.imag(double(abs(2 * z.real() * z.imag()) + c.imag()));
+    z.real((double)xtemp);
+
+    if (std::norm(z) > radius) {
+      return iterations - i;
+    }
+  }
+  return 0;
+}
+
+int in_tric_set(std::complex<precision_t> c) {
+  std::complex<double> z(0, 0);
+  unsigned int i = iterations;
+  while (i) {
+    i--;
+    double xtemp = double(z.real() * z.real() - z.imag() * z.imag() + c.real()); // maybe change this precision
+    z.imag(double(-2 * z.real() * z.imag() + c.imag()));
     z.real(xtemp);
 
     if (std::norm(z) > radius) {
@@ -325,27 +356,11 @@ int in_ship_set(std::complex<long double> c) {
   return 0;
 }
 
-int in_tric_set(std::complex<long double> c) {
-  std::complex<double> z(0, 0);
+int in_julia_set(std::complex<precision_t> z) {
   unsigned int i = iterations;
   while (i) {
     i--;
-    double xtemp = z.real() * z.real() - z.imag() * z.imag() + c.real();
-    z.imag(-2 * z.real() * z.imag() + c.imag());
-    z.real(xtemp);
-
-    if (std::norm(z) > radius) {
-      return iterations - i;
-    }
-  }
-  return 0;
-}
-
-int in_julia_set(std::complex<long double> z) {
-  unsigned int i = iterations;
-  while (i) {
-    i--;
-    long double xtemp = z.real() * z.real() - z.imag() * z.imag() + julia_c.real();
+    precision_t xtemp = z.real() * z.real() - z.imag() * z.imag() + julia_c.real();
     z.imag(2 * z.real() * z.imag() + julia_c.imag());
     z.real(xtemp);
 
@@ -361,19 +376,22 @@ int screenshot(SDL_Renderer *renderer, SDL_Window *window) {
   SDL_GetWindowSize(window, &win_w, &win_h);
 
   std::filesystem::create_directory("screenshots");
-  std::string filename = "screenshots/" + set_names[set] + "_";
+  std::stringstream filenameSS;
+  filenameSS << std::setprecision(std::numeric_limits<long double>::digits10 + 2) << "screenshots/" << set_names[set] << "_" << x_pos << "," << y_pos <<
+             "," << zoom << "," << std::to_string(iterations) <<
+             "," << std::to_string(r) << "," + std::to_string(g) << "," <<
+             std::to_string(b) + "-" << std::to_string(win_w) << "x" <<
+             std::to_string(win_h) << ".bmp";
 
-  filename = filename + std::to_string(x_pos) + "," + std::to_string(y_pos) +
-             "," + std::to_string(zoom) + "," + std::to_string(iterations) +
-             "," + std::to_string(r) + "," + std::to_string(g) + "," +
-             std::to_string(b) + "-" + std::to_string(win_w) + "x" +
-             std::to_string(win_h) + ".bmp";
-  char *filenamec = str_to_char(filename);
+  std::string filenameS = filenameSS.str();
+  char *filenameC = str_to_char(filenameS);
 
   SDL_Surface *image = SDL_CreateRGBSurface(0, win_w, win_h, 32, 0, 0, 0, 0);
   SDL_RenderReadPixels(renderer, NULL, 0, image->pixels, image->pitch);
-  SDL_SaveBMP(image, filenamec);
+  SDL_SaveBMP(image, filenameC);
   SDL_FreeSurface(image);
+
+  delete[] filenameC;
   return 0;
 }
 
@@ -415,6 +433,7 @@ int render_escape_time_boundary(SDL_Renderer *renderer,
 
   char *logc = str_to_char(logs);
   SDL_Log(logc);
+  delete[] logc;
   SDL_SetWindowTitle(window, "Cool Fractal Viewer (Rendering)");
   std::chrono::steady_clock::time_point start =
       std::chrono::steady_clock::now();
@@ -610,10 +629,11 @@ int render_escape_time_i(SDL_Renderer *renderer, SDL_Window *window) {
 }
 */
 
-std::vector<double> compute_escape_time(unsigned int starty, unsigned int endy,
+std::vector<normalized_t> compute_escape_time(unsigned int starty, unsigned int endy, // TODO: make this NOT USE FLOAT VECTIR
                                         unsigned int ix, int win_w, int win_h,
                                         unsigned int iz) {
-  std::vector<double> renderedvec;
+  std::vector<normalized_t> renderedvec;
+  renderedvec.reserve(std::floor((win_w+ix)/iz) * (endy-starty));
 
   unsigned int iters;
 
@@ -621,22 +641,22 @@ std::vector<double> compute_escape_time(unsigned int starty, unsigned int endy,
   for (double x = ix; x < win_w; x += iz) {
     for (double y = starty; y < endy; y += 1) {
       iters = 0;
-      long double x_point = std::lerp(-aspect_zoom.real() + x_pos,
+      precision_t x_point = naive_lerp(-aspect_zoom.real() + x_pos,
                                       aspect_zoom.real() + x_pos, x / win_w);
-      long double y_point = std::lerp(-aspect_zoom.imag() + y_pos,
+      precision_t y_point = naive_lerp(-aspect_zoom.imag() + y_pos,
                                       aspect_zoom.imag() + y_pos, y / win_h);
       switch (set) {
       case 0:
-        iters = in_mand_set2(std::complex<long double>(x_point, y_point));
+        iters = in_mand_set2(std::complex<precision_t>(x_point, y_point));
         break;
       case 1:
-        iters = in_tric_set(std::complex<long double>(x_point, y_point));
+        iters = in_tric_set(std::complex<precision_t>(x_point, y_point));
         break;
       case 2:
-        iters = in_ship_set(std::complex<long double>(x_point, y_point));
+        iters = in_ship_set(std::complex<precision_t>(x_point, y_point));
         break;
       case 3:
-        iters = in_julia_set(std::complex<long double>(x_point, y_point));
+        iters = in_julia_set(std::complex<precision_t>(x_point, y_point));
         break;
       }
 
@@ -647,33 +667,35 @@ std::vector<double> compute_escape_time(unsigned int starty, unsigned int endy,
   return renderedvec;
 }
 
-std::vector<double> compute_normalized(unsigned int starty, unsigned int endy,
+std::vector<normalized_t> compute_normalized(unsigned int starty, unsigned int endy,
                                        unsigned int ix, int win_w, int win_h,
                                        unsigned int iz) {
-  std::vector<double> renderedvec;
+  std::vector<normalized_t> renderedvec;
+  renderedvec.reserve(std::floor((win_w+ix)/iz) * (endy-starty));
 
-  double iters;
+  normalized_t iters;
 
   // start the main render loop
   for (double x = ix; x < win_w; x += iz) {
     for (double y = starty; y < endy; y += 1) {
       iters = 0;
-      long double x_point = std::lerp(-aspect_zoom.real() + x_pos,
-                                      aspect_zoom.real() + x_pos, x / win_w);
-      long double y_point = std::lerp(-aspect_zoom.imag() + y_pos,
-                                      aspect_zoom.imag() + y_pos, y / win_h);
+      precision_t x_point = naive_lerp(-aspect_zoom.real() + x_pos,
+                                      aspect_zoom.real() + x_pos, (precision_t)x / win_w);
+      precision_t y_point = naive_lerp(-aspect_zoom.imag() + y_pos,
+                                      aspect_zoom.imag() + y_pos, (precision_t)y / win_h);
       switch (set) {
       case 0:
-        iters = in_mand_set_norm(std::complex<long double>(x_point, y_point));
+        iters = in_mand_set_norm(std::complex<precision_t>(x_point, y_point));
         break;
       case 1:
-        iters = in_tric_set_norm(std::complex<long double>(x_point, y_point));
+        iters = in_tric_set_norm(std::complex<precision_t>(x_point, y_point));
         break;
       case 2:
-        iters = in_ship_set_norm(std::complex<long double>(x_point, y_point));
+        iters = in_ship_set_norm(std::complex<precision_t>(x_point, y_point));
         break;
       case 3:
-        iters = in_julia_set_norm(std::complex<long double>(x_point, y_point));
+        iters = in_julia_set_norm(std::complex<precision_t>(x_point, y_point));
+        break; // TODO: NOTE: maybe not necessary, this break.
       }
 
       renderedvec.push_back(iters);
@@ -699,7 +721,7 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
 
     int chunksize = win_h / threads;
 
-    int xc = std::fpclassify(x_pos);
+    /*int xc = std::fpclassify(x_pos); // NOTE: custom precision no likey
     int yc = std::fpclassify(y_pos);
     int zoomc = std::fpclassify(zoom);
     if (xc == FP_NAN || xc == FP_INFINITE || yc == FP_NAN ||
@@ -714,10 +736,10 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
     } else if (zoom == 0) {
       zoom = 2;
       SDL_Log("0 zoom detected; resetting it");
-    }
+    }*/
 
-    double ratioA = abs((-zoom + x_pos) - (zoom + x_pos)) /
-                    abs((-zoom + y_pos) - (zoom + y_pos));
+    double ratioA = double(abs((-zoom + x_pos) - (zoom + x_pos)) /
+                    abs((-zoom + y_pos) - (zoom + y_pos)));
     double ratioB = double(win_w) / win_h;
 
     if (ratioB > ratioA) {
@@ -739,7 +761,8 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
     std::string logs = log.str();
 
     char *logc = str_to_char(logs);
-    SDL_Log(logc);
+    SDL_Log("%s", logc);
+    delete[] logc;
 
     SDL_SetWindowTitle(window, "Cool Fractal Viewer (Rendering)");
     std::chrono::steady_clock::time_point start =
@@ -758,8 +781,11 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
         ix = 3;
         break;
       }
-      std::vector<double> renderedvec;
-      std::vector<std::future<std::vector<double>>> futures;
+      // SDL_Log("debug: STARTING RENDER ITERATION");
+
+      std::vector<normalized_t> renderedvec;
+
+      std::vector<std::future<std::vector<normalized_t>>> futures;
 
       // render on other threads
       for (unsigned int i = 0; i < threads - 1; i += 1) {
@@ -775,7 +801,8 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       }
 
       // do some rendering on the main thread
-      std::vector<double> lastrender;
+      std::vector<normalized_t> lastrender;
+      lastrender.reserve(std::floor((win_w+ix)/4) * (win_h-chunksize * (threads - 1)));
       if (normalized) {
         lastrender = compute_normalized(chunksize * (threads - 1), win_h, ix,
                                         win_w, win_h, 4);
@@ -785,8 +812,9 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
       }
 
       // wait for the threads
+      renderedvec.reserve(win_w * win_h);
       for (unsigned int i = 0; i < threads - 1; i += 1) {
-        std::vector<double> temprendered = futures[i].get();
+        std::vector<normalized_t> temprendered = futures[i].get();
         renderedvec.insert(renderedvec.end(), temprendered.begin(),
                            temprendered.end());
       }
@@ -796,9 +824,11 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
 
       double iters;
       unsigned int ticker = 0;
-      unsigned int starty;
+      unsigned int starty; // TODO: NOTE: TODO: consider merging threads to primary
       unsigned int endy;
       std::vector<unsigned int> rgb;
+
+      // SDL_Log("debug: ACTUALLY RENDERING");
 
       for (unsigned int chunk = 0; chunk < threads; chunk += 1) {
         if (chunk < threads - 1) {
@@ -878,8 +908,6 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
               events[0]
                   .key.keysym.sym) { // maybe do something for SDLK_BACKSLASH?
           case SDLK_s:
-            render_incomplete = false;
-            break;
           case SDLK_KP_ENTER:
             render_incomplete = false;
             break;
@@ -889,6 +917,11 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
           break;
         }
       }
+
+      renderedvec = std::vector<normalized_t>();
+      lastrender = std::vector<normalized_t>();
+      futures = std::vector<std::future<std::vector<normalized_t>>>();
+
     }
 
     SDL_SetRenderTarget(renderer, NULL);
@@ -896,27 +929,51 @@ int render(SDL_Renderer *renderer, SDL_Window *window) {
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::chrono::duration<double> diff = end - start;
+
+    char* windowtitle = str_to_char("Cool Fractal Viewer (" +
+                                   std::to_string(diff.count()) + " s)");
+
+    SDL_SetWindowTitle(window, windowtitle);
+
+    delete[] windowtitle;
+
+    /*
+    bench.push_back(diff.count());
+
+    double count = 0;
+    for (double x: bench) {
+      count += x;
+    }
+    count /= bench.size();
+
     SDL_SetWindowTitle(window,
-                       str_to_char("Cool Fractal Viewer (" +
-                                   std::to_string(diff.count()) + " s)"));
+                       str_to_char("Cool Fractal Bencher (" +
+                                   std::to_string(count) + " s)"));
+    */
 
     if (render_incomplete) {
       SDL_SetWindowTitle(window, "Cool Fractal Viewer (RENDER INCOMPLETE)");
       return 1;
     }
   } else if (set == 4) {
+
     SDL_SetWindowTitle(window, "Cool Fractal Viewer (Rendering)");
     std::chrono::steady_clock::time_point start =
-        std::chrono::steady_clock::now();
+        std::chrono::steady_clock::now(); // TODO: fix biggie big: NOTE: pressing random key (like w or some shit) while rendering will make the render cease to render! check if the key is actually important first.
 
-//     rendered = render_sierpinski(renderer, window, iterations, rendered);
+    rendered = render_sierpinski(renderer, window, iterations, rendered);
 
     std::chrono::steady_clock::time_point end =
         std::chrono::steady_clock::now();
     std::chrono::duration<double> diff = end - start;
+
+    char* windowtitle = str_to_char("Cool Fractal Viewer (" +
+                                   std::to_string(diff.count()) + " s)");
+
     SDL_SetWindowTitle(window,
-                       str_to_char("Cool Fractal Viewer (" +
-                                   std::to_string(diff.count()) + " s)"));
+                       windowtitle);
+
+    delete[] windowtitle;
   }
   return 0;
 }
@@ -1082,10 +1139,10 @@ int handle_events(SDL_Event event, SDL_Renderer *renderer, SDL_Window *window) {
       break;
     case SDLK_v:
       set += 1;
-      if (set > sets) {
+      if (set > et_sets) {
         set = 0;
       } if (set == 3) {
-        julia_c = std::complex<long double>(x_pos, y_pos);
+        julia_c = std::complex<precision_t>(x_pos, y_pos);
       }
       render(renderer, window);
       break;
@@ -1093,12 +1150,12 @@ int handle_events(SDL_Event event, SDL_Renderer *renderer, SDL_Window *window) {
       if (set) {
         set -= 1;
       } else {
-        set = sets;
+        set = et_sets;
       }
-      if (set > sets) {
+      if (set > et_sets) {
         set = 0;
       } if (set == 3) {
-        julia_c = std::complex<long double>(x_pos, y_pos);
+        julia_c = std::complex<precision_t>(x_pos, y_pos);
       }
       render(renderer, window);
       break;
@@ -1106,6 +1163,12 @@ int handle_events(SDL_Event event, SDL_Renderer *renderer, SDL_Window *window) {
       normalized = !normalized;
       render(renderer, window);
       break;
+    /*case SDLK_g: // this is the dev key, for developer things.
+      //for (unsigned int i = 0; i < 10000; i++) {
+      //  render(renderer, window);
+      //}
+      return 1;
+      break; */
     }
     break;
   case SDL_MOUSEBUTTONDOWN:
@@ -1131,8 +1194,8 @@ int handle_events(SDL_Event event, SDL_Renderer *renderer, SDL_Window *window) {
       y_pos += (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
       zoom /= 2;
 
-      double ratioA = abs((-zoom + x_pos) - (zoom + x_pos)) /
-                      abs((-zoom + y_pos) - (zoom + y_pos));
+      double ratioA = double(abs((-zoom + x_pos) - (zoom + x_pos)) /
+                      abs((-zoom + y_pos) - (zoom + y_pos))); // maybe moving around the casting will make it faster? static cast maybe?
       double ratioB = double(win_w) / win_h;
 
       if (ratioB > ratioA) {
@@ -1163,8 +1226,8 @@ int handle_events(SDL_Event event, SDL_Renderer *renderer, SDL_Window *window) {
       y_pos += (double(mouse_y) / win_h - 0.5) * aspect_zoom.imag() * 2;
       zoom *= 2;
 
-      double ratioA = abs((-zoom + x_pos) - (zoom + x_pos)) /
-                      abs((-zoom + y_pos) - (zoom + y_pos));
+      double ratioA = double(abs((-zoom + x_pos) - (zoom + x_pos)) /
+                      abs((-zoom + y_pos) - (zoom + y_pos)));
       double ratioB = double(win_w) / win_h;
 
       if (ratioB > ratioA) {
@@ -1233,23 +1296,21 @@ extern "C"
 
   SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 
-  SDL_Window *window =
+  SDL_Window* window =
       SDL_CreateWindow("Cool Fractal Viewer", SDL_WINDOWPOS_UNDEFINED,
                        SDL_WINDOWPOS_UNDEFINED, 256, 256, SDL_WINDOW_RESIZABLE);
-  SDL_Renderer *renderer = SDL_CreateRenderer(
+  SDL_Renderer* renderer = SDL_CreateRenderer(
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
   SDL_SetRenderDrawBlendMode(renderer, blend);
 
-  SDL_Log(str_to_char(
-      "Cool Fractal Viewer v" + std::to_string(fractal_VERSION_MAJOR) + "." +
-      std::to_string(fractal_VERSION_MINOR) +
+  std::printf("Cool Fractal Viewer v%u.%u"
       "\n  Copyright (C) 2022 David Cole\n  This program "
       "is free software: you\n  can redistribute it and/or modify\n  it "
       "under the terms of the GNU General Public License as published by\n "
       " the Free Software Foundation, either version 3 of the License, "
       "or\n  (at your option) any later version.\n\n  You should have "
       "received a copy of the GNU General Public License\n  along with "
-      "this program.  If not, see <https://www.gnu.org/licenses/>.\n\n"));
+      "this program.  If not, see <https://www.gnu.org/licenses/>.\n\n", fractal_VERSION_MAJOR, fractal_VERSION_MINOR);
 
   if (typeid(zoom) == typeid(long double)) {
     SDL_Log("Using long precision");
@@ -1259,12 +1320,14 @@ extern "C"
     SDL_Log("Using other precision");
   }
 
-  SDL_Log(str_to_char("Using " + std::to_string(threads) + " threads"));
+  SDL_Log("Using %u threads", threads);
 
-  if (argc >= 4) {
-    x_pos = strtod(argv[1], nullptr);
-    y_pos = strtod(argv[2], nullptr);
-    zoom = strtod(argv[3], nullptr);
+  if (argc >= 3) {
+    x_pos = std::stold(argv[1], nullptr);
+    y_pos = std::stold(argv[2], nullptr);
+    if (argc >= 4) {
+    zoom = std::stold(argv[3], nullptr);
+    }
   }
 
   std::stringstream dtest1;
@@ -1293,10 +1356,40 @@ extern "C"
   render(renderer, window);
 
   SDL_Event event;
+//   bool dev_flipper = false;
   while (!quit) {
     SDL_WaitEvent(&event);
     SDL_FlushEvents(SDL_KEYDOWN, SDL_MOUSEWHEEL);
+
     handle_events(event, renderer, window);
+
+    /*if(handle_events(event, renderer, window)) { // do dev things when dev key is pressed, code is very leaky
+      SDL_Log("dev key pressed");
+      SDL_DestroyRenderer(renderer);
+      SDL_DestroyWindow(window);
+
+      window =
+      SDL_CreateWindow("Cool Fractal Viewer", SDL_WINDOWPOS_UNDEFINED,
+                       SDL_WINDOWPOS_UNDEFINED, 10240, 10240, SDL_WINDOW_HIDDEN);
+
+      renderer = SDL_CreateRenderer(
+      window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
+
+      render(renderer, window);
+      screenshot(renderer, window);
+
+      SDL_DestroyRenderer(renderer);
+      SDL_DestroyWindow(window);
+
+      window =
+      SDL_CreateWindow("Cool Fractal Viewer", SDL_WINDOWPOS_UNDEFINED,
+                       SDL_WINDOWPOS_UNDEFINED, 256, 256, SDL_WINDOW_RESIZABLE);
+
+      renderer = SDL_CreateRenderer(
+      window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
+
+      render(renderer, window);
+    }*/
 
     // render frame
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);

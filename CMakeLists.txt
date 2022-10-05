@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 project(fractal VERSION 1.3)
 
-option(USE_LONGDOUBLE "Use long doubles for keeping track of zoom" ON) #WIP, forced on for now.
+set(PRECISION_T "long_double" CACHE STRING "MUST BE ONE WORD! What type to use for most major calculations. Try mpfr_float for arbitrary precision, long_double for medium precision.")
 
 configure_file(config.h.in config.h)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -lgmp -lmpfr")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
