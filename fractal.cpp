@@ -43,7 +43,7 @@ typedef long double normalized_t;  // which type to use for normalized iteration
 unsigned int set = 0;
 unsigned int color = 2;					  // make color an int because i don't wanna come up with
 										  // names for the colorschemes and maybe it's better for performance idk
-constexpr unsigned int total_colors = 3;  // how many colorschemes have actually been programmed in
+constexpr unsigned int total_colors = 5;  // how many colorschemes have actually been programmed in
 constexpr unsigned int sets = 4;
 constexpr unsigned int et_sets = 3;	 // i'll let you guess
 const std::vector<std::string> set_names = {"mandelbrot", "tricorn", "burning_ship", "julia", "sierpinski"};
@@ -853,9 +853,16 @@ int render(SDL_Renderer* renderer, SDL_Window* window) {
 									rgb = hue_to_rgb((iters / iterations) * 360, (10 * iters) / iterations);
 									break;
 								case 3:
-									unsigned int grayscale = (iters / iterations) * 255;
+								{const unsigned int grayscale = (iters / iterations) * 255;
 									rgb = std::vector<unsigned int>{grayscale, grayscale, grayscale};
+									break;}
+								case 4:
+									rgb = std::vector<unsigned int>{255, 255, 255};
 									break;
+								case 5:
+								{const unsigned int grayscale = 255 - ((iters / iterations) * 255);
+									rgb = std::vector<unsigned int>{grayscale, grayscale, grayscale};
+									break;}
 							}
 							SDL_SetRenderDrawColor(renderer, rgb[2], rgb[1], rgb[0], 255);
 							SDL_RenderDrawPoint(renderer, x, y);
@@ -1272,7 +1279,7 @@ extern "C"
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 2);
 	}
 
-	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1); // TODO: add support for pressing c mid-render
 
 	SDL_Window* window = SDL_CreateWindow("Cool Fractal Viewer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 										  256, 256, SDL_WINDOW_RESIZABLE);

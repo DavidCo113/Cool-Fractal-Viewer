@@ -1,6 +1,8 @@
 # Cool Fractal Viewer
 ### Fractal viewing application written in C++ with SDL2
 
+![Cool Fractal Viewer](readme-image.png)
+
 ## Controls
 Arrow keys (numpad included) | Movement
 
