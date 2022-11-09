@@ -1,5 +1,5 @@
 # Cool Fractal Viewer
-### Fractal viewing application written in C++ with SDL2
+### CPU-rendered fractal viewing application written in C++ with SDL2
 
 ![Cool Fractal Viewer](readme-image.png)
 
